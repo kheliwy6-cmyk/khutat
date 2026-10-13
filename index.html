@@ -1215,6 +1215,29 @@ table.plan {
   font-size: 12px;
   color: var(--paper-gutter);
 }
+/* ---------- تذييل الموقع المستقل: دخول صاحب الصفحة ---------- */
+.site-foot {
+  margin-top: 44px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.owner-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.site-foot .status:empty {
+  display: none;
+}
 @media (prefers-reduced-motion: no-preference) {
   .chip,
   .stepper button,
@@ -1516,6 +1539,15 @@ table.plan {
     </form>
   </section>
   </main>
+
+  <footer class="site-foot" id="siteFoot" hidden>
+    <p class="owner-line">
+      <span id="ownerInfo"></span>
+      <button type="button" class="link-btn" id="ownerIn">دخول صاحب الصفحة</button>
+      <button type="button" class="link-btn" id="ownerOut" hidden>تسجيل الخروج</button>
+    </p>
+    <p class="status" id="ownerStatus" role="status" aria-live="polite"></p>
+  </footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -2064,7 +2096,7 @@ const LIBRARY = {"ready": [{"title": "الأذكار والآداب", "level": 1
 const LIBRARY_EMBED = {};
 const WATERMARK_JPG = "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";
 
-const SITE = { standalone: true };
+const SITE = {"standalone": true, "firebase": {"apiKey": "AIzaSyDa_2yztq-mdOa7-n9Vs4HDmOIJLNkt7rc", "authDomain": "khutat-d0f01.firebaseapp.com", "projectId": "khutat-d0f01", "storageBucket": "khutat-d0f01.firebasestorage.app", "messagingSenderId": "541432838268", "appId": "1:541432838268:web:f11a5b46e69d7284ebf1f9"}, "seed": {"plans": [{"custom": null, "dates": {"fill": false, "start": "1448/5/2", "weekdays": [4, 5]}, "days": 28, "halaqa": "عبدالله بن عمر", "link": {"days": 2, "daysManual": false, "enabled": true, "mode": "pages", "pages": 10}, "name": "كتاب التوحيد في ٢٨ يوماً، حلقة عبدالله بن عمر", "review": {"items": [{"mode": "pages", "source": "mukhtasar45", "value": 20}], "levels": {"first": "mukhtasar41", "pages": 20, "self": true}, "method": "levels", "repeat": true}, "rows": [["3/77-81", "-", "9-29"], ["3/82-87", "3/77-81", "30-48"], ["3/88-92", "3/78-87", "49-68"], ["3/93-97", "3/83-92", "69-86"], ["3/98-103", "3/88-97", "87-104"], ["3/104-107", "3/94-103", "2/25-46"], ["3/108-112", "3/98-107", "2/47-64"], ["3/113-116", "3/103-112", "2/65-85"], ["3/117-123", "3/107-116", "2/86-103"], ["3/124-129", "3/114-123", "2/104-122"], ["3/130-136", "3/120-129", "2/123-140"], ["3/137-141", "3/127-136", "3/25-39"], ["3/142-146", "3/132-141", "3/43-57"], ["3/147-152", "3/137-146", "3/58-71"], ["3/153-156", "3/143-152", "3/77-97"], ["3/157-161", "3/147-156", "3/98-116"], ["3/162-167", "3/152-161", "3/117-141"], ["3/168-171", "3/158-167", "9-29"], ["3/172-176", "3/162-171", "30-48"], ["3/177-179", "3/167-176", "49-68"], ["3/180-185", "3/170-179", "69-86"], ["3/186-190", "3/176-185", "87-104"], ["3/191-196", "3/181-190", "2/25-46"], ["3/197-200", "3/187-196", "2/47-64"], ["3/201-205", "3/191-200", "2/65-85"], ["3/206-211", "3/196-205", "2/86-103"], ["3/212-216", "3/202-211", "2/104-122"], ["3/217-219", "3/207-216", "2/123-140"]], "savedAt": "2026-10-13T16:07:29.291Z", "textId": "tawheed", "textName": "كتاب التوحيد", "title": "خطة المستوى الثالث – كتاب التوحيد.", "withReview": true, "id": "0ghfoeil2c8cwp8fqsw6"}, {"custom": null, "dates": {"fill": false, "start": "1448/5/2", "weekdays": [4, 5]}, "days": 60, "description": "٦٠ يوماً (من ٤/‏٥/‏١٤٤٨ إلى ١/‏١٢/‏١٤٤٨ ه)، الحفظ: المختصر ثم الأذكار والآداب، والمراجعة فيما حُفظ من متون المستوى قبل الربط.", "halaqa": "أبو بكر الصديق", "level1": {"adhkar": true, "edition": "mukhtasar41"}, "link": {"cont": true, "days": 3, "daysManual": false, "enabled": true, "mode": "pages", "pages": 10, "prevId": null}, "name": "المستوى الأول كاملاً في ٦٠ يوماً، حلقة أبو بكر الصديق", "review": {"items": [{"mode": "pages", "source": "self", "value": 20}], "levels": {"pages": 20, "self": true, "start": 2, "startOn": false}, "mergeShort": true, "method": "levels", "repeat": true}, "rows": [["9-10", "-", "-", ""], ["11-13", "9-10", "-", ""], ["14-17", "9-13", "-", ""], ["18-19", "9-17", "-", ""], ["20-22", "9-19", "-", ""], ["23-25", "11-22", "9-10", "المختصر"], ["26-27", "14-25", "9-13", ""], ["28-29", "18-27", "9-17", ""], ["30-31", "20-29", "9-19", ""], ["32-33", "22-31", "9-19", ""], ["34-35", "24-33", "9-22", ""], ["36-38", "26-35", "9-25", ""], ["39-41", "29-38", "9-27", ""], ["42-44", "32-41", "9-31", ""], ["45-47", "35-44", "9-33", ""], ["48-49", "38-47", "9-35", ""], ["50-52", "40-49", "9-31", ""], ["53-55", "43-52", "32-38", ""], ["56-58", "46-55", "9-31", ""], ["59-63", "49-58", "32-44", ""], ["64-65", "52-63", "9-31", ""], ["66-67", "54-65", "32-49", ""], ["68-71", "56-67", "9-31", ""], ["72-74", "60-71", "32-55", ""], ["75-78", "65-74", "9-31", ""], ["79-80", "69-78", "32-52", ""], ["81-82", "71-80", "53-63", ""], ["83-86", "73-82", "9-31", ""], ["87-90", "77-86", "32-52", ""], ["91-94", "81-90", "53-71", ""], ["95-98", "85-94", "9-31", ""], ["99-102", "89-98", "32-52", ""], ["103←1/11", "93-102", "53-74", ""], ["1/12-16", "97←1/11", "75-82", ""], ["1/20-25", "102←1/16", "9-31", ""], ["1/26-31", "1/12-25", "32-52", ""], ["1/32-36", "1/21-31", "53-74", ""], ["1/37-42", "1/27-36", "75-98", ""], ["1/43-48", "1/33-42", "9-31", ""], ["1/49-53", "1/39-48", "32-52", ""], ["1/54-63", "1/44-53", "53-74", ""], ["1/64-74", "1/54-63", "75-94", ""], ["1/75-84", "1/65-74", "95←1/31", "الأذكار والآداب"], ["1/85-97", "1/75-84", "9-31", "المختصر"], ["1/100-113", "1/86-97", "32-52", ""], ["1/114-122", "1/102-113", "53-74", ""], ["1/123-133", "1/113-122", "75-94", ""], ["1/134-143", "1/123-133", "95←1/25", "الأذكار والآداب"], ["1/144-154", "1/134-143", "1/26-48", ""], ["1/155-164", "1/145-154", "1/49-63", ""], ["1/165-176", "1/155-164", "1/64-74", ""], ["1/178-186", "1/163-176", "9-31", "المختصر"], ["1/187-197", "1/176-186", "32-52", ""], ["1/198-208", "1/188-197", "53-74", ""], ["1/210-217", "1/199-208", "75-94", ""], ["1/218-225", "1/206-217", "95←1/25", "الأذكار والآداب"], ["1/226-234", "1/216-225", "1/26-48", ""], ["1/235-245", "1/225-234", "1/49-63", ""], ["1/246-259", "1/236-245", "1/64-84", ""], ["1/260-268", "1/248-259", "1/85-113", ""]], "savedAt": "2026-10-13T19:52:53.649Z", "textId": "level-1", "textName": "المستوى الأول كاملاً", "title": "خطة المستوى الأول", "withReview": true, "id": "7it6s7zmvtm0drxu1jxh"}, {"custom": null, "dates": {"fill": false, "start": "1448/5/2", "weekdays": [4, 5]}, "days": 30, "description": "٣٠ يوماً (من ٤/‏٥/‏١٤٤٨ إلى ١٤/‏٨/‏١٤٤٨ ه)، الحفظ: الأربعون النووية ثم نواقض الإسلام ثم القواعد الأربع ثم الأصول الثلاثة، والمراجعة من ١١ إلى ٢/‏١٣٣ ثم تعود من أولها.", "halaqa": "أبو بكر الصديق", "level1": {"adhkar": true, "edition": "mukhtasar45"}, "link": {"cont": true, "days": 2, "daysManual": false, "enabled": true, "mode": "pages", "pages": 10, "prevId": null}, "name": "المستوى الثاني كاملاً في ٣٠ يوماً، حلقة أبو بكر الصديق", "review": {"items": [{"mode": "pages", "source": "adhkar", "value": 20}], "levels": {"pages": 20, "self": true, "start": 2, "startOn": false}, "mergeShort": true, "method": "levels", "repeat": true}, "rows": [["2/79-83", "1/259-268", "11-33", "المختصر"], ["2/84-87", "1/264←2/83", "34-53", ""], ["2/88-91", "1/268←2/87", "54-77", ""], ["2/92-95", "2/82-91", "78-96", ""], ["2/96-99", "2/86-95", "97-117", ""], ["2/100-103", "2/90-99", "1/10-34", "الأذكار والآداب"], ["2/104-107", "2/94-103", "1/35-53", ""], ["2/108-111", "2/98-107", "1/54-74", ""], ["2/112-114", "2/102-111", "1/75-97", ""], ["2/115-118", "2/105-114", "1/100-120", ""], ["2/119-122", "2/109-118", "1/121-139", ""], ["2/123-126", "2/113-122", "1/140-161", ""], ["2/127-129", "2/117-126", "1/162-183", ""], ["2/130-133", "2/120-129", "1/184-202", ""], ["2/134-137", "2/124-133", "1/203-225", ""], ["2/138-140", "2/128-137", "1/226-245", ""], ["2/25-27", "2/131-140", "1/246-268", ""], ["2/28-32", "134-140+25-27", "2/79-99", "الأربعون النووية"], ["2/33-35", "137-140+25-32", "2/100-118", ""], ["2/36-39", "140+25-35", "2/119-133", ""], ["2/40-44", "2/28-39", "11-33", "المختصر"], ["2/45-47", "2/33-44", "34-53", ""], ["2/48-50", "2/36-47", "54-77", ""], ["2/51-53", "2/39-50", "78-96", ""], ["2/54-56", "2/44-53", "97-117", ""], ["2/57-59", "2/47-56", "1/10-34", "الأذكار والآداب"], ["2/60-65", "2/50-59", "1/35-53", ""], ["2/66-68", "2/56-65", "1/54-74", ""], ["2/69-71", "2/59-68", "1/75-97", ""], ["2/72-74", "2/62-71", "1/100-120", ""]], "savedAt": "2026-10-13T19:43:03.459Z", "textId": "level-2", "textName": "المستوى الثاني كاملاً", "title": "خطة المستوى الثاني", "withReview": true, "id": "b5gpj4tkym7so27rpfg0"}], "names": {"files": {"l3-47": {"title": "متون المستوى الثالث (ط. 47)"}, "x-zad-45": {"title": "زاد المستقنع في اختصار المقنع (ط. 45)"}}}}};
 
 </script>
 <script>
@@ -3738,6 +3770,167 @@ const XlsxLite = (() => {
 
 </script>
 <script>
+/* الحفظ في الموقع المستقل: Firebase (Firestore Lite، والدخول بحساب Google).
+   واجهة تحاكي قاعدة بيانات Claude التي تستعملها الصفحة: collection / doc / onSnapshot / set / delete،
+   فلا يتغير منطق الخطط المحفوظة ولوحة التحكم بين النسختين.
+   Firestore Lite لا يتابع التغييرات لحظياً، فتُعاد قراءة القوائم بعد كل حفظ أو حذف، وعند العودة إلى الصفحة. */
+(function () {
+  "use strict";
+  const SDK = "https://www.gstatic.com/firebasejs/12.19.0/";
+
+  // Firestore لا يقبل مصفوفة داخل مصفوفة (صفوف الخطة)، فتُلفّ المصفوفة الداخلية في {__a: [...]}
+  function enc(v, inArray) {
+    if (Array.isArray(v)) {
+      const a = v.map((x) => enc(x, true));
+      return inArray ? { __a: a } : a;
+    }
+    if (v && typeof v === "object") {
+      const o = {};
+      for (const k of Object.keys(v)) if (v[k] !== undefined) o[k] = enc(v[k], false);
+      return o;
+    }
+    return v === undefined ? null : v;
+  }
+  function dec(v) {
+    if (Array.isArray(v)) return v.map(dec);
+    if (v && typeof v === "object") {
+      const keys = Object.keys(v);
+      if (keys.length === 1 && keys[0] === "__a" && Array.isArray(v.__a)) return v.__a.map(dec);
+      const o = {};
+      for (const k of keys) o[k] = dec(v[k]);
+      return o;
+    }
+    return v;
+  }
+
+  // رموز الأخطاء كما تعرفها الصفحة من قاعدة بيانات Claude
+  const CODES = { "permission-denied": "invalid_argument", unauthenticated: "invalid_argument", "resource-exhausted": "quota_exceeded" };
+  function wrapErr(e) {
+    const raw = e && e.code ? String(e.code).replace(/^firestore\//, "") : "";
+    const err = new Error((e && e.message) || "cloud error");
+    err.code = CODES[raw] || raw || "unknown";
+    err.raw = raw;
+    return err;
+  }
+  const fail = (e) => {
+    throw wrapErr(e);
+  };
+
+  function create(fb, config) {
+    const app = fb.initializeApp(config);
+    const auth = fb.getAuth(app);
+    const fs = fb.getFirestore(app);
+    const watchers = new Set();
+    let lastRefresh = Date.now();
+    function refresh() {
+      lastRefresh = Date.now();
+      watchers.forEach((w) => w());
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && Date.now() - lastRefresh > 30000) refresh();
+    });
+    function watch(read, cb, onErr) {
+      let alive = true;
+      const run = () =>
+        read().then(
+          (v) => alive && cb(v),
+          (e) => alive && onErr && onErr(wrapErr(e))
+        );
+      watchers.add(run);
+      run();
+      return () => {
+        alive = false;
+        watchers.delete(run);
+      };
+    }
+    const snap = (s) => {
+      const exists = s.exists();
+      const data = exists ? dec(s.data() || {}) : undefined;
+      return { id: s.id, exists, data: () => data };
+    };
+    function docApi(ref) {
+      return {
+        id: ref.id,
+        get: () => fb.getDoc(ref).then(snap, fail),
+        set: (data) => fb.setDoc(ref, enc(data, false)).then(refresh, fail),
+        delete: () => fb.deleteDoc(ref).then(refresh, fail),
+        onSnapshot: (cb, onErr) => watch(() => fb.getDoc(ref).then(snap), cb, onErr),
+      };
+    }
+    function collectionApi(name, cons) {
+      const col = fb.collection(fs, name);
+      return {
+        doc: (id) => docApi(id ? fb.doc(col, id) : fb.doc(col)),
+        orderBy: (field, dir) => collectionApi(name, cons.concat([fb.orderBy(field, dir || "asc")])),
+        limit: (n) => collectionApi(name, cons.concat([fb.limit(n)])),
+        onSnapshot: (cb, onErr) =>
+          watch(() => fb.getDocs(cons.length ? fb.query(col, ...cons) : col).then((s) => ({ docs: s.docs.map(snap) })), cb, onErr),
+      };
+    }
+    const db = {
+      collection: (name) => collectionApi(name, []),
+      doc: (path) => docApi(fb.doc(fs, path)),
+    };
+
+    // صاحب الصفحة: قواعد Firestore لا تسمح بقراءة owner/check إلا لحسابه
+    const provider = new fb.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const ownerRef = fb.doc(fs, "owner/check");
+    const person = (u) => (u ? { email: u.email || "", name: u.displayName || "" } : null);
+    const authApi = {
+      onChange: (cb) => fb.onAuthStateChanged(auth, (u) => cb(person(u))),
+      // تُستدعى مباشرة من ضغطة الزر، فلا يمنع المتصفح نافذة الدخول
+      signIn: () => fb.signInWithPopup(auth, provider).then((r) => person(r.user)),
+      signOut: () => fb.signOut(auth),
+      isOwner: () =>
+        fb.getDoc(ownerRef).then(
+          () => true,
+          (e) => {
+            const w = wrapErr(e);
+            if (w.code === "invalid_argument") return false;
+            throw w;
+          }
+        ),
+    };
+    return { db, auth: authApi };
+  }
+
+  let loading = null;
+  function load(config) {
+    if (!loading) {
+      loading = Promise.all(["firebase-app.js", "firebase-auth.js", "firebase-firestore-lite.js"].map((f) => import(SDK + f))).then(
+        ([a, u, f]) =>
+          create(
+            {
+              initializeApp: a.initializeApp,
+              getAuth: u.getAuth,
+              GoogleAuthProvider: u.GoogleAuthProvider,
+              signInWithPopup: u.signInWithPopup,
+              signOut: u.signOut,
+              onAuthStateChanged: u.onAuthStateChanged,
+              getFirestore: f.getFirestore,
+              doc: f.doc,
+              collection: f.collection,
+              getDoc: f.getDoc,
+              getDocs: f.getDocs,
+              setDoc: f.setDoc,
+              deleteDoc: f.deleteDoc,
+              query: f.query,
+              orderBy: f.orderBy,
+              limit: f.limit,
+            },
+            config
+          )
+      );
+    }
+    return loading;
+  }
+
+  window.KhutatCloud = { load, create, enc, dec, SDK };
+})();
+
+</script>
+<script>
 /* ===== واجهة منشئ خطط المتون ===== */
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -4112,7 +4305,7 @@ const XlsxLite = (() => {
     $("rPages").textContent = fmtNum(st.avg);
     $("rPagesNote").textContent = st.min === st.max ? "صفحة في اليوم" : `صفحة، من ${AR(st.min)} إلى ${AR(st.max)}`;
     $("rSheets").textContent = AR(Math.ceil(p.D / ROWS));
-    $("exportBtnNote").textContent = `${AR(state.text.name)} في ${daysWord(p.D)}${studentName() ? "، للطالب " + studentName() : ""}${state.halaqa.enabled ? "، حلقة " + state.halaqa.name : ""}`;
+    $("exportBtnNote").textContent = `${AR(state.text.name)} في ${daysAfter(p.D)}${studentName() ? "، للطالب " + studentName() : ""}${state.halaqa.enabled ? "، حلقة " + state.halaqa.name : ""}`;
   }
 
   /* ---------- المراجعة الكبرى ----------
@@ -4802,15 +4995,18 @@ const XlsxLite = (() => {
       selectText(t.id, plan.length, { title: meta.title });
       applyRows(plan);
       renderLibrary();
-      setStatus(st, `رُفعت الخطة: ${AR(t.name)} في ${daysWord(state.plan.D)}.`, "ok");
+      setStatus(st, `رُفعت الخطة: ${AR(t.name)} في ${daysAfter(state.plan.D)}.`, "ok");
     } catch (err) {
       setStatus(st, "تعذّر رفع الملف: " + (err && err.message ? err.message : "صيغة غير مدعومة"), "error");
     }
   }
 
   /* ---------- الخطط المحفوظة (مكتبة مشتركة: الكل يقرأ، وصاحب الصفحة يحفظ ويحذف) ---------- */
-  const lib = { db: null, owner: false, ownerKnown: false, status: "loading", plans: [] };
+  const lib = { db: null, owner: false, ownerKnown: false, status: "loading", plans: [], cloud: null, user: null, checking: false };
+  let markLoaded;
+  const libLoaded = new Promise((r) => (markLoaded = r));
   async function initLibrary() {
+    if (SITE_MODE) return initSiteLibrary();
     if (!window.claude || typeof window.claude.use !== "function") {
       lib.status = "unavailable";
       renderLibrary();
@@ -4830,6 +5026,13 @@ const XlsxLite = (() => {
       renderLibrary();
       return;
     }
+    subscribeLibrary(db);
+  }
+  // في الموقع المستقل تُقرأ قائمة الخطط عند فتح صفحتها أو دخول صاحب الصفحة فقط،
+  // لأن كل خطة في القائمة قراءةٌ تُحسب من حصة Firebase اليومية المجانية
+  let plansDb = null;
+  let plansOn = false;
+  function subscribeLibrary(db, lazy) {
     // المسميات التي يحفظها صاحب الصفحة من لوحة التحكم
     try {
       db.doc(NAMES_DOC).onSnapshot(
@@ -4839,7 +5042,13 @@ const XlsxLite = (() => {
     } catch (e) {
       /* تبقى المسميات الأصلية */
     }
-    db.collection("plans")
+    plansDb = db;
+    if (!lazy) watchPlans();
+  }
+  function watchPlans() {
+    if (plansOn || !plansDb) return;
+    plansOn = true;
+    plansDb.collection("plans")
       .orderBy("savedAt", "desc")
       .limit(500)
       .onSnapshot(
@@ -4848,6 +5057,7 @@ const XlsxLite = (() => {
           lib.status = "ready";
           if (state.loaded && !lib.plans.some((p) => p.id === state.loaded.id)) state.loaded = null;
           renderLibrary();
+          markLoaded();
         },
         () => {
           lib.status = "error";
@@ -4856,8 +5066,141 @@ const XlsxLite = (() => {
       );
   }
 
+  /* ---------- الموقع المستقل: الحفظ في Firebase ----------
+     الخطط المحفوظة والمسميات يقرؤها كل زائر، ولا يحفظ أو يحذف أو يدخل لوحة التحكم إلا صاحب الصفحة
+     بعد دخوله بحساب Google (وقواعد Firestore هي التي تمنع غيره). */
+  const SIGNIN_ERRORS = {
+    "auth/popup-blocked": "منع المتصفح نافذة الدخول؛ اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة.",
+    "auth/unauthorized-domain": "عنوان هذا الموقع غير مضاف في «Authorized domains» في Firebase.",
+    "auth/operation-not-allowed": "الدخول بحساب Google غير مفعّل في Firebase (Sign-in method).",
+    "auth/network-request-failed": "تعذّر الاتصال؛ تحقّق من الإنترنت ثم أعد المحاولة.",
+  };
+  const ownerMsg = (msg, kind) => setStatus($("ownerStatus"), msg, kind);
+  function initSiteLibrary() {
+    $("siteFoot").hidden = false;
+    renderOwnerBar();
+    const cfg = SITE.firebase;
+    const cloud = window.KhutatCloud && cfg ? window.KhutatCloud.load(cfg) : Promise.reject(new Error("no cloud"));
+    cloud.then(
+      (c) => {
+        lib.cloud = c;
+        lib.db = c.db;
+        subscribeLibrary(c.db, true);
+        if (!$("view-saved").hidden) watchPlans();
+        c.auth.onChange((u) => siteUser(u));
+        renderOwnerBar();
+      },
+      () => {
+        lib.status = "error";
+        lib.ownerKnown = true;
+        renderLibrary();
+        renderAdmin();
+        renderOwnerBar();
+      }
+    );
+  }
+  let ownerCheck = 0;
+  async function siteUser(u) {
+    const turn = ++ownerCheck;
+    lib.user = u;
+    if (!u) {
+      lib.checking = false;
+      setOwner(false);
+      return;
+    }
+    lib.checking = true;
+    renderOwnerBar();
+    let owner = false;
+    let failed = false;
+    try {
+      owner = await lib.cloud.auth.isOwner();
+    } catch (e) {
+      failed = true;
+    }
+    if (turn !== ownerCheck) return;
+    lib.checking = false;
+    if (failed) {
+      ownerMsg("تعذّر التحقق من الحساب الآن؛ أعد تحميل الصفحة.", "error");
+      setOwner(false);
+      return;
+    }
+    if (!owner) {
+      ownerMsg(`الحساب ${u.email} ليس حساب صاحب الصفحة، فلا يحفظ الخطط؛ سُجّل خروجه.`, "error");
+      lib.cloud.auth.signOut().catch(() => {});
+      return;
+    }
+    setOwner(true);
+    watchPlans();
+    migrateFromClaude();
+  }
+  function setOwner(v) {
+    lib.owner = !!v;
+    lib.ownerKnown = true;
+    $("navAdmin").hidden = !lib.owner;
+    renderOwnerBar();
+    renderAdmin();
+    renderLibrary();
+  }
+  function renderOwnerBar() {
+    if (!SITE_MODE) return;
+    const signedIn = lib.owner && !!lib.user;
+    $("ownerIn").hidden = signedIn || lib.checking;
+    $("ownerOut").hidden = !signedIn;
+    $("ownerInfo").textContent = signedIn ? `أنت مسجّل الدخول بحساب ${lib.user.email}.` : lib.checking ? "جارٍ التحقق من الحساب…" : "";
+  }
+  function siteSignIn() {
+    if (!lib.cloud) {
+      ownerMsg(lib.status === "error" ? "تعذّر الاتصال بقاعدة الخطط؛ أعد تحميل الصفحة." : "جارٍ الاتصال بقاعدة الخطط؛ أعد المحاولة بعد لحظة.", "error");
+      return;
+    }
+    ownerMsg("", "");
+    // تُفتح نافذة Google من الضغطة نفسها، قبل أي انتظار
+    lib.cloud.auth.signIn().catch((e) => {
+      const code = (e && e.code) || "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request" || code === "auth/user-cancelled") return;
+      ownerMsg(SIGNIN_ERRORS[code] || `تعذّر تسجيل الدخول${code ? " (" + code + ")" : ""}.`, "error");
+    });
+  }
+  // نقل الخطط والمسميات المحفوظة في رابط Claude، مرة واحدة عند أول دخول لصاحب الصفحة
+  let migrating = false;
+  async function migrateFromClaude() {
+    const seed = SITE.seed;
+    if (migrating || !seed || !lib.db) return;
+    migrating = true;
+    try {
+      await libLoaded;
+      const meta = await lib.db.doc(META_DOC).get();
+      if (meta.exists && (meta.data() || {}).claudeImport) return;
+      const have = new Set(lib.plans.map((p) => p.id));
+      let n = 0;
+      for (const p of seed.plans || []) {
+        if (!p || !p.id || have.has(p.id)) continue;
+        const body = Object.assign({}, p);
+        delete body.id;
+        await lib.db.collection("plans").doc(p.id).set(body);
+        n++;
+      }
+      let names = false;
+      if (seed.names && Object.keys(seed.names).length) {
+        const cur = await lib.db.doc(NAMES_DOC).get();
+        if (!cur.exists) {
+          await lib.db.doc(NAMES_DOC).set({ names: seed.names, savedAt: new Date().toISOString() });
+          receiveNames(seed.names);
+          names = true;
+        }
+      }
+      await lib.db.doc(META_DOC).set({ claudeImport: new Date().toISOString(), plans: n, names });
+      if (n || names)
+        ownerMsg(`نُقل من رابط Claude: ${n ? (n === 1 ? "خطة محفوظة" : AR(n) + " من الخطط المحفوظة") : ""}${n && names ? "، و" : ""}${names ? "المسميات المعدّلة" : ""}.`, "ok");
+    } catch (e) {
+      /* يُعاد النقل في الدخول التالي */
+    } finally {
+      migrating = false;
+    }
+  }
+
   function defaultPlanName() {
-    return `${AR(state.text.name)} في ${daysWord(state.plan.D)}${state.halaqa.enabled ? "، حلقة " + state.halaqa.name : ""}`;
+    return `${AR(state.text.name)} في ${daysAfter(state.plan.D)}${state.halaqa.enabled ? "، حلقة " + state.halaqa.name : ""}`;
   }
   /* ---------- اعتماد الخطة ----------
      زر «اعتماد الخطة» يحفظها (لصاحب الصفحة) في الخطط المحفوظة، ثم تظهر أزرار التصدير.
@@ -4981,6 +5324,7 @@ const XlsxLite = (() => {
      المسميات الأصلية من بيانات الصفحة، وما يغيّره صاحب الصفحة يُحفظ في المستند config/names
      فيظهر لكل من يفتحها (ونسخة منه في متصفح العارض لتظهر من أول لحظة). */
   const NAMES_DOC = "config/names";
+  const META_DOC = "config/meta";
   const NAMES_CACHE = "khutat-names-v1";
   const TAB_IDS = ["ready", "texts", "create", "saved"];
   const entryKey = (e) =>
@@ -5116,7 +5460,11 @@ const XlsxLite = (() => {
   function renderAdmin() {
     const owner = lib.owner;
     $("adminLock").hidden = owner;
-    $("adminLock").textContent = lib.ownerKnown || lib.status !== "loading" ? "لوحة التحكم لصاحب الصفحة فقط." : "جارٍ التحقق…";
+    $("adminLock").textContent = !(lib.ownerKnown || lib.status !== "loading")
+      ? "جارٍ التحقق…"
+      : SITE_MODE
+        ? "لوحة التحكم لصاحب الصفحة فقط؛ سجّل دخولك من «دخول صاحب الصفحة» أسفل الصفحة."
+        : "لوحة التحكم لصاحب الصفحة فقط.";
     $("adminForm").hidden = !owner;
     if (!owner || !NAME_DEFAULTS) return;
     const d = NAME_DEFAULTS;
@@ -5325,8 +5673,9 @@ const XlsxLite = (() => {
   /* ---------- الصفحات: إنشاء خطة، الخطط المحفوظة، الخطط الجاهزة، المتون ---------- */
   const VIEWS = ["ready", "texts", "create", "saved", "admin"];
   function showView(name) {
-    if (!VIEWS.includes(name) || (SITE_MODE && (name === "saved" || name === "admin"))) name = "ready";
+    if (!VIEWS.includes(name)) name = "ready";
     if (name === "admin") renderAdmin();
+    if (name === "saved") watchPlans();
     for (const v of VIEWS) $("view-" + v).hidden = v !== name;
     document.querySelectorAll(".pages-nav a").forEach((a) => {
       if (a.dataset.view === name) a.setAttribute("aria-current", "page");
@@ -5778,6 +6127,11 @@ const XlsxLite = (() => {
 
     // الخطط المحفوظة
     $("approve").addEventListener("click", () => approvePlan());
+    $("ownerIn").addEventListener("click", siteSignIn);
+    $("ownerOut").addEventListener("click", () => {
+      ownerMsg("", "");
+      if (lib.cloud) lib.cloud.auth.signOut().catch(() => {});
+    });
     $("libSearch").addEventListener("input", renderLibrary);
     $("libList").addEventListener("click", (e) => {
       const st = $("libStatus");
@@ -5847,15 +6201,9 @@ const XlsxLite = (() => {
     const days = prefs.days && prefs.days[id] ? prefs.days[id] : undefined;
     selectText(id, days, { keepLink: !!(prefs.link && prefs.link.daysManual) });
     renderLibrary();
-    if (SITE_MODE) {
-      document.querySelector('.pages-nav a[data-view="saved"]').hidden = true;
-      lib.status = "unavailable";
-      lib.ownerKnown = true;
-      updateSaveArea();
-    }
     route();
     getDownloads();
-    if (!SITE_MODE) initLibrary();
+    initLibrary();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
