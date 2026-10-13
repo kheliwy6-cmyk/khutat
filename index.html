@@ -3876,9 +3876,11 @@ const XlsxLite = (() => {
     const provider = new fb.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     const ownerRef = fb.doc(fs, "owner/check");
-    const person = (u) => (u ? { email: u.email || "", name: u.displayName || "" } : null);
+    const person = (u) => (u ? { uid: u.uid, email: u.email || "", name: u.displayName || "", anon: !!u.isAnonymous } : null);
     const authApi = {
       onChange: (cb) => fb.onAuthStateChanged(auth, (u) => cb(person(u))),
+      // الزائر يحفظ بهوية مجهولة لجهازه (دون تسجيل دخول)، فيحذف ما حفظه هو وحده
+      ensureUser: () => (auth.currentUser ? Promise.resolve(auth.currentUser.uid) : fb.signInAnonymously(auth).then((r) => r.user.uid)),
       // تُستدعى مباشرة من ضغطة الزر، فلا يمنع المتصفح نافذة الدخول
       signIn: () => fb.signInWithPopup(auth, provider).then((r) => person(r.user)),
       signOut: () => fb.signOut(auth),
@@ -3906,6 +3908,7 @@ const XlsxLite = (() => {
               getAuth: u.getAuth,
               GoogleAuthProvider: u.GoogleAuthProvider,
               signInWithPopup: u.signInWithPopup,
+              signInAnonymously: u.signInAnonymously,
               signOut: u.signOut,
               onAuthStateChanged: u.onAuthStateChanged,
               getFirestore: f.getFirestore,
@@ -5103,7 +5106,8 @@ const XlsxLite = (() => {
   async function siteUser(u) {
     const turn = ++ownerCheck;
     lib.user = u;
-    if (!u) {
+    // لا حساب، أو هوية مجهولة لزائر حفظ خطة: ليس صاحب الصفحة
+    if (!u || u.anon) {
       lib.checking = false;
       setOwner(false);
       return;
@@ -5125,7 +5129,7 @@ const XlsxLite = (() => {
       return;
     }
     if (!owner) {
-      ownerMsg(`الحساب ${u.email} ليس حساب صاحب الصفحة، فلا يحفظ الخطط؛ سُجّل خروجه.`, "error");
+      ownerMsg(`الحساب ${u.email} ليس حساب صاحب الصفحة، فسُجّل خروجه. وحفظ الخطط متاح لكل زائر دون دخول.`, "error");
       lib.cloud.auth.signOut().catch(() => {});
       return;
     }
@@ -5203,9 +5207,11 @@ const XlsxLite = (() => {
     return `${AR(state.text.name)} في ${daysAfter(state.plan.D)}${state.halaqa.enabled ? "، حلقة " + state.halaqa.name : ""}`;
   }
   /* ---------- اعتماد الخطة ----------
-     زر «اعتماد الخطة» يحفظها (لصاحب الصفحة) في الخطط المحفوظة، ثم تظهر أزرار التصدير.
-     إذا تغيّرت الخطة بعد اعتمادها اختفت الأزرار حتى تُعتمد من جديد. */
-  const canSave = () => lib.owner && lib.status === "ready" && !!lib.db;
+     زر «اعتماد الخطة» يحفظها في الخطط المحفوظة، ثم تظهر أزرار التصدير: في رابط Claude لصاحب الصفحة،
+     وفي الموقع المستقل لكل من يعتمد خطة. إذا تغيّرت الخطة بعد اعتمادها اختفت الأزرار حتى تُعتمد من جديد. */
+  const canSave = () => (SITE_MODE ? !!lib.cloud : lib.owner && lib.status === "ready" && !!lib.db);
+  // من يحذف الخطة في الموقع: صاحب الصفحة، أو من حفظها من جهازه
+  const canDelete = (p) => lib.owner || (SITE_MODE && !!lib.user && !!p.by && p.by === lib.user.uid);
   function planKey() {
     if (!state.plan) return "";
     return JSON.stringify([
@@ -5254,9 +5260,14 @@ const XlsxLite = (() => {
         const name = defaultPlanName();
         const body = planSnapshot(name);
         const plans = lib.db.collection("plans");
-        const ref = samePlan(state.loaded, body) ? plans.doc(state.loaded.id) : plans.doc();
+        // في الموقع: تُحدَّث الخطة في مكانها إن كانت لمن حفظها (أو لصاحب الصفحة)، وإلا حُفظت نسخة جديدة له
+        const by = SITE_MODE ? await lib.cloud.auth.ensureUser() : null;
+        const own = !SITE_MODE || lib.owner || (!!state.loaded && !!state.loaded.by && state.loaded.by === by);
+        const same = samePlan(state.loaded, body) && own;
+        if (SITE_MODE) body.by = same && state.loaded.by ? state.loaded.by : by;
+        const ref = same ? plans.doc(state.loaded.id) : plans.doc();
         await ref.set(body);
-        state.loaded = { id: ref.id, name, textId: body.textId, textName: body.textName, halaqa: body.halaqa };
+        state.loaded = { id: ref.id, name, textId: body.textId, textName: body.textName, halaqa: body.halaqa, by: body.by || null };
         // الخطط المحفوظة يقرؤها كل من لديه الرابط، فلا يُحفظ فيها اسم الطالب
         note = `اعتُمدت الخطة وحُفظت في «الخطط المحفوظة» باسم «${AR(name)}»${studentName() ? " (دون اسم الطالب)" : ""}.`;
       }
@@ -5264,7 +5275,13 @@ const XlsxLite = (() => {
     } catch (err) {
       const code = err && err.code;
       note = "اعتُمدت الخطة، ولم تُحفظ في «الخطط المحفوظة»: " +
-        (code === "invalid_argument" ? "الحفظ لصاحب الصفحة فقط." : code === "quota_exceeded" ? "امتلأت مساحة الحفظ؛ احذف خططاً قديمة." : "تعذّر الحفظ الآن.");
+        (code === "invalid_argument"
+          ? SITE_MODE ? "لم تسمح قاعدة البيانات بالحفظ." : "الحفظ لصاحب الصفحة فقط."
+          : code === "quota_exceeded"
+            ? "امتلأت مساحة الحفظ؛ احذف خططاً قديمة."
+            : code === "auth/operation-not-allowed" || code === "auth/admin-restricted-operation"
+              ? "الحفظ للزوار غير مفعّل في Firebase بعد (Anonymous)."
+              : "تعذّر الحفظ الآن" + (code && String(code).startsWith("auth/") ? ` (${code})` : "") + ".");
       setStatus(st, "", "");
     } finally {
       btn.disabled = false;
@@ -5310,7 +5327,7 @@ const XlsxLite = (() => {
       state.dates = { enabled: !!start, start, weekdays: p.dates.weekdays || [0, 1, 2, 3, 4], fill: p.dates.fill !== false };
     } else state.dates.enabled = false;
     if (p.level1) state.level1 = validLevel1(p.level1);
-    state.loaded = { id: p.id, name: p.name, textId: p.textId || null, textName: p.textName, halaqa: p.halaqa || "" };
+    state.loaded = { id: p.id, name: p.name, textId: p.textId || null, textName: p.textName, halaqa: p.halaqa || "", by: p.by || null };
     state.approved = null;
     selectText(id, p.days, { title: p.title, review: p.review, keepLink: true });
     applyRows((p.rows || []).map(([memo, link, big, note]) => ({ memo, link, big, note })));
@@ -5629,14 +5646,18 @@ const XlsxLite = (() => {
       note.textContent = "تعذّر تحميل الخطط المحفوظة الآن.";
       list.innerHTML = "";
     } else if (!n) {
-      note.textContent = lib.owner
+      note.textContent = lib.owner || SITE_MODE
         ? "لا خطط محفوظة بعد. أنشئ خطة في صفحة «إنشاء خطة» ثم اضغط «اعتماد الخطة» لتُحفظ هنا لكل من يفتح الصفحة."
         : "لم تُحفظ خطط بعد.";
       list.innerHTML = "";
     } else {
-      note.textContent = lib.owner
-        ? "تُحفظ هنا كل خطة تعتمدها في صفحة «إنشاء خطة»، ويفتحها كل من يفتح الصفحة ويصدّرها."
-        : "افتح الخطة لتعديلها قبل التصدير، أو نزّلها ملف وورد أو PDF مباشرة.";
+      note.textContent = SITE_MODE
+        ? lib.owner
+          ? "تُحفظ هنا كل خطة يعتمدها أحد في صفحة «إنشاء خطة»، وتستطيع حذف أيّ منها."
+          : "تُحفظ هنا كل خطة يعتمدها أحد في صفحة «إنشاء خطة». افتح الخطة لتعديلها، أو نزّلها وورد أو PDF مباشرة، واحذف ما حفظتَه أنت من هذا الجهاز."
+        : lib.owner
+          ? "تُحفظ هنا كل خطة تعتمدها في صفحة «إنشاء خطة»، ويفتحها كل من يفتح الصفحة ويصدّرها."
+          : "افتح الخطة لتعديلها قبل التصدير، أو نزّلها ملف وورد أو PDF مباشرة.";
       const q = fold($("libSearch").value);
       const shown = q
         ? lib.plans.filter((p) => fold([p.name, p.textName, p.halaqa, savedDescription(p)].join(" ")).includes(q))
@@ -5660,7 +5681,7 @@ const XlsxLite = (() => {
               <button type="button" class="link-btn" data-open="${pid}">${open ? "مفتوحة" : "فتح"}</button>
               <button type="button" class="link-btn" data-word="${pid}">تنزيل وورد</button>
               <button type="button" class="link-btn" data-pdf="${pid}">تنزيل PDF</button>
-              ${lib.owner ? `<button type="button" class="danger-btn${armed[p.id] ? " is-armed" : ""}" data-del="${pid}">${armed[p.id] ? "تأكيد الحذف" : "حذف"}</button>` : ""}
+              ${canDelete(p) ? `<button type="button" class="danger-btn${armed[p.id] ? " is-armed" : ""}" data-del="${pid}">${armed[p.id] ? "تأكيد الحذف" : "حذف"}</button>` : ""}
             </div>
           </li>`;
             })
