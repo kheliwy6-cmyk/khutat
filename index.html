@@ -753,7 +753,8 @@ input.mini {
   color: var(--muted);
   font-weight: 400;
   font-size: 0.88rem;
-  margin-inline-start: 8px;
+  /* مسافة تتسع لذيل الحرف الأخير في العنوان العريض (كالنون والتاء) */
+  margin-inline-start: 0.9em;
 }
 .admin-grid {
   display: grid;
@@ -793,7 +794,7 @@ input.mini {
   color: var(--muted);
   font-weight: 400;
   font-size: 0.86rem;
-  margin-inline-start: 6px;
+  margin-inline-start: 0.8em;
 }
 .admin-actions {
   display: flex;
@@ -1215,6 +1216,90 @@ table.plan {
   font-size: 12px;
   color: var(--paper-gutter);
 }
+/* ---------- المعلم في شريط الاعتماد ---------- */
+.teacher-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.teacher-row label {
+  font-weight: 600;
+}
+.teacher-row select {
+  width: auto;
+  min-width: 190px;
+}
+.teacher-row .hint {
+  font-size: 0.86rem;
+}
+a.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+/* ---------- تصفية الخطط المحفوظة ---------- */
+.lib-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.lib-tools input {
+  flex: 1 1 260px;
+}
+.lib-tools select {
+  width: auto;
+  flex: 0 1 190px;
+}
+.lib-count {
+  flex-basis: 100%;
+  margin: 0;
+}
+.lib-count:empty {
+  display: none;
+}
+a.link-btn {
+  font-size: 0.86rem;
+}
+/* ---------- لوحة التحكم: المشرفون والنسخة الاحتياطية ---------- */
+.admin-extra {
+  margin-top: 12px;
+}
+.admin-extra p {
+  margin: 0 0 10px;
+}
+.admin-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.admin-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+.admin-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.admin-add input {
+  flex: 1 1 240px;
+  max-width: 360px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
 /* ---------- تذييل الموقع المستقل: دخول صاحب الصفحة ---------- */
 .site-foot {
   margin-top: 44px;
@@ -1454,6 +1539,11 @@ table.plan {
     <section class="preview" aria-label="الخطة">
       <section class="approve" id="approveBar" aria-label="اعتماد الخطة وتصديرها">
         <p class="open-note" id="openNote" hidden>من الخطط المحفوظة: <b id="openName"></b> · <a href="#saved">كل الخطط المحفوظة</a></p>
+        <div class="teacher-row" id="teacherRow" hidden>
+          <label for="teacher">المعلم</label>
+          <select id="teacher"></select>
+          <span class="hint">يُحفظ مع الخطة في «الخطط المحفوظة»، ولا يظهر في ورقتها.</span>
+        </div>
         <div class="approve-row" id="approveRow">
           <button type="button" class="primary" id="approve">اعتماد الخطة</button>
           <div class="approve-text">
@@ -1468,6 +1558,7 @@ table.plan {
             <button type="button" class="primary" id="exportPdf">تصدير PDF</button>
             <button type="button" class="secondary" id="exportXlsx">تصدير اكسل</button>
             <button type="button" class="secondary" id="importBtn">رفع خطة من اكسل</button>
+            <a class="secondary wa" id="shareWa" href="#" target="_blank" rel="noopener" hidden>إرسال بالواتساب</a>
           </div>
         </div>
         <input type="file" id="importFile" accept=".xlsx,.csv" hidden>
@@ -1500,7 +1591,11 @@ table.plan {
       <p class="hint" id="libNote"></p>
     </div>
     <div class="lib-tools" id="libTools" hidden>
-      <input type="search" id="libSearch" placeholder="ابحث باسم الخطة أو المتن أو الحلقة" aria-label="بحث في الخطط المحفوظة" autocomplete="off">
+      <input type="search" id="libSearch" placeholder="ابحث باسم الخطة أو المتن أو الحلقة أو المعلم" aria-label="بحث في الخطط المحفوظة" autocomplete="off">
+      <select id="libLevel" aria-label="تصفية بالمستوى" hidden></select>
+      <select id="libHalaqa" aria-label="تصفية بالحلقة" hidden></select>
+      <select id="libTeacher" aria-label="تصفية بالمعلم" hidden></select>
+      <p class="hint lib-count" id="libCount"></p>
     </div>
     <p class="status" id="libStatus" role="status" aria-live="polite"></p>
     <ul class="lib-list" id="libList"></ul>
@@ -1537,6 +1632,27 @@ table.plan {
       </div>
       <p class="status" id="adminStatus" role="status" aria-live="polite"></p>
     </form>
+    <details class="admin-sec admin-extra" id="adminPeople" open hidden>
+      <summary>المشرفون<span>يدخلون بحساب Google فيحذفون الخطط ويعدّلونها ويعدّلون المسميات</span></summary>
+      <ul class="admin-list" id="adminList"></ul>
+      <div class="admin-add">
+        <input type="email" id="adminEmail" dir="ltr" placeholder="name@gmail.com" aria-label="بريد المشرف" autocomplete="off">
+        <button type="button" class="secondary" id="adminAdd">إضافة مشرف</button>
+      </div>
+      <p class="hint">إضافة المشرفين وحذفهم لك وحدك.</p>
+      <p class="status" id="adminPeopleStatus" role="status" aria-live="polite"></p>
+    </details>
+    <details class="admin-sec admin-extra" id="adminBackup" open hidden>
+      <summary>النسخة الاحتياطية<span>كل الخطط المحفوظة والمسميات في ملف واحد</span></summary>
+      <p class="hint">نزّل نسخة من حين لآخر واحفظها عندك. والاسترجاع يضيف ما في الملف ويحدّث المتطابق منه، ولا يحذف شيئاً.</p>
+      <div class="admin-actions">
+        <button type="button" class="primary" id="backupDown">تنزيل نسخة احتياطية</button>
+        <button type="button" class="secondary" id="backupUp">استرجاع من نسخة</button>
+        <button type="button" class="secondary" id="backupConfirm" hidden>تأكيد الاسترجاع</button>
+      </div>
+      <input type="file" id="backupFile" accept=".json,application/json" hidden>
+      <p class="status" id="backupStatus" role="status" aria-live="polite"></p>
+    </details>
   </section>
   </main>
 
@@ -3865,6 +3981,16 @@ const XlsxLite = (() => {
         limit: (n) => collectionApi(name, cons.concat([fb.limit(n)])),
         onSnapshot: (cb, onErr) =>
           watch(() => fb.getDocs(cons.length ? fb.query(col, ...cons) : col).then((s) => ({ docs: s.docs.map(snap) })), cb, onErr),
+        get: () => fb.getDocs(cons.length ? fb.query(col, ...cons) : col).then((s) => ({ docs: s.docs.map(snap) }), fail),
+        // كتابة مستندات كثيرة دفعة واحدة (الاسترجاع): ٤٠٠ في كل دفعة، ثم تُقرأ القوائم مرة واحدة
+        setMany: async (items) => {
+          for (let i = 0; i < items.length; i += 400) {
+            const batch = fb.writeBatch(fs);
+            for (const it of items.slice(i, i + 400)) batch.set(it.id ? fb.doc(col, it.id) : fb.doc(col), enc(it.data, false));
+            await batch.commit().catch(fail);
+          }
+          refresh();
+        },
       };
     }
     const db = {
@@ -3872,10 +3998,18 @@ const XlsxLite = (() => {
       doc: (path) => docApi(fb.doc(fs, path)),
     };
 
-    // صاحب الصفحة: قواعد Firestore لا تسمح بقراءة owner/check إلا لحسابه
+    // المشرفون: قواعد Firestore لا تسمح بقراءة owner/check إلا لهم، ولا owner/main إلا لصاحب الموقع
     const provider = new fb.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
-    const ownerRef = fb.doc(fs, "owner/check");
+    const allowed = (path) =>
+      fb.getDoc(fb.doc(fs, path)).then(
+        () => true,
+        (e) => {
+          const w = wrapErr(e);
+          if (w.code === "invalid_argument") return false;
+          throw w;
+        }
+      );
     const person = (u) => (u ? { uid: u.uid, email: u.email || "", name: u.displayName || "", anon: !!u.isAnonymous } : null);
     const authApi = {
       onChange: (cb) => fb.onAuthStateChanged(auth, (u) => cb(person(u))),
@@ -3884,15 +4018,8 @@ const XlsxLite = (() => {
       // تُستدعى مباشرة من ضغطة الزر، فلا يمنع المتصفح نافذة الدخول
       signIn: () => fb.signInWithPopup(auth, provider).then((r) => person(r.user)),
       signOut: () => fb.signOut(auth),
-      isOwner: () =>
-        fb.getDoc(ownerRef).then(
-          () => true,
-          (e) => {
-            const w = wrapErr(e);
-            if (w.code === "invalid_argument") return false;
-            throw w;
-          }
-        ),
+      isOwner: () => allowed("owner/check"),
+      isMain: () => allowed("owner/main"),
     };
     return { db, auth: authApi };
   }
@@ -3921,6 +4048,7 @@ const XlsxLite = (() => {
               query: f.query,
               orderBy: f.orderBy,
               limit: f.limit,
+              writeBatch: f.writeBatch,
             },
             config
           )
@@ -3944,6 +4072,8 @@ const XlsxLite = (() => {
   const ROWS = DocxBuilder.ROWS_PER_SHEET;
   const LEVEL_NAMES = { 1: "المستوى الأول", 2: "المستوى الثاني", 3: "المستوى الثالث", 4: "المستوى الرابع", 5: "المستوى الخامس" };
   const HALAQAT = ["أبو هريرة", "أنس بن مالك", "عبدالله بن عباس", "عبدالله بن عمر", "عبدالله بن مسعود", "عمر بن الخطاب", "أبو بكر الصديق", "أحمد بن حنبل"];
+  // المعلمون: يُختار أحدهم عند اعتماد الخطة فيُحفظ معها في «الخطط المحفوظة»، ولا يظهر في ورقة الخطة ولا في ملفاتها
+  const TEACHERS = ["فيصل الرشيد", "محمد الضويان", "علي الدهلاوي", "فيصل الخربوش", "عبدالعزيز الخليوي", "خالد الباهلي", "فواز الدهامي"];
   const ORDINALS = ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التاسع", "العاشر", "الحادي عشر", "الثاني عشر", "الثالث عشر", "الرابع عشر", "الخامس عشر", "السادس عشر", "السابع عشر", "الثامن عشر", "التاسع عشر", "العشرون"];
   // عدد أيام الربط في خططك الأصلية لكل متن، يتكيّف مع المدة الجديدة عند الربط بالأيام
   const LINK_ORIG = {
@@ -3997,6 +4127,7 @@ const XlsxLite = (() => {
   const daysAfter = (n) => pick(n, { one: "يوم واحد", two: "يومين", pl: `${AR(n)} أيام`, acc: `${AR(n)} يوماً`, gen: `${AR(n)} يوم` });
   const pagesWord = (n) => pick(n, { one: "صفحة واحدة", two: "صفحتان", pl: `${AR(n)} صفحات`, acc: `${AR(n)} صفحة`, gen: `${AR(n)} صفحة` });
   const pagesAfter = (n) => pick(n, { one: "صفحة", two: "صفحتين", pl: `${AR(n)} صفحات`, acc: `${AR(n)} صفحة`, gen: `${AR(n)} صفحة` });
+  const plansWord = (n) => pick(n, { one: "خطة واحدة", two: "خطتان", pl: `${AR(n)} خطط`, acc: `${AR(n)} خطة`, gen: `${AR(n)} خطة` });
   const unitWord = (n) => pick(n, { one: "يوم", two: "يومان", pl: "أيام", acc: "يوماً", gen: "يوم" });
   const asciiDays = (n) => pick(n, { one: "يوم واحد", two: "يومان", pl: `${n} أيام`, acc: `${n} يوما`, gen: `${n} يوم` });
 
@@ -4028,6 +4159,7 @@ const XlsxLite = (() => {
       s.link = state.link;
       s.withReview = state.withReview;
       s.halaqa = state.halaqa;
+      s.teacher = state.teacher;
       s.student = { enabled: state.student.enabled };
       s.dates = {
         enabled: state.dates.enabled,
@@ -4104,6 +4236,12 @@ const XlsxLite = (() => {
     return t;
   }
 
+  function fillTeacher() {
+    const list = !state.teacher || TEACHERS.includes(state.teacher) ? TEACHERS : TEACHERS.concat([state.teacher]);
+    $("teacher").innerHTML =
+      `<option value="">اختر المعلم</option>` + list.map((h) => `<option value="${esc(h)}">${esc(h)}</option>`).join("");
+    $("teacher").value = state.teacher || "";
+  }
   function fillHalaqa() {
     const list = HALAQAT.includes(state.halaqa.name) ? HALAQAT : HALAQAT.concat(state.halaqa.name ? [state.halaqa.name] : []);
     $("halaqa").innerHTML = list.map((h) => `<option value="${esc(h)}">${esc(h)}</option>`).join("");
@@ -4129,6 +4267,7 @@ const XlsxLite = (() => {
     level1: validLevel1(null),
     halaqa: { enabled: false, name: HALAQAT[0] },
     student: { enabled: false, name: "" },
+    teacher: "",
     dates: { enabled: false, start: null, weekdays: [0, 1, 2, 3, 4], fill: true },
     studyDates: [],
     title: "",
@@ -5005,7 +5144,10 @@ const XlsxLite = (() => {
   }
 
   /* ---------- الخطط المحفوظة (مكتبة مشتركة: الكل يقرأ، وصاحب الصفحة يحفظ ويحذف) ---------- */
-  const lib = { db: null, owner: false, ownerKnown: false, status: "loading", plans: [], cloud: null, user: null, checking: false };
+  const lib = { db: null, owner: false, main: false, ownerKnown: false, status: "loading", plans: [], cloud: null, user: null, checking: false, admins: null, adminsError: false };
+  let cloudResolve, cloudReject;
+  const cloudReady = new Promise((res, rej) => ((cloudResolve = res), (cloudReject = rej)));
+  cloudReady.catch(() => {});
   let markLoaded;
   const libLoaded = new Promise((r) => (markLoaded = r));
   async function initLibrary() {
@@ -5092,8 +5234,10 @@ const XlsxLite = (() => {
         if (!$("view-saved").hidden) watchPlans();
         c.auth.onChange((u) => siteUser(u));
         renderOwnerBar();
+        cloudResolve(c);
       },
-      () => {
+      (err) => {
+        cloudReject(err);
         lib.status = "error";
         lib.ownerKnown = true;
         renderLibrary();
@@ -5109,6 +5253,7 @@ const XlsxLite = (() => {
     // لا حساب، أو هوية مجهولة لزائر حفظ خطة: ليس صاحب الصفحة
     if (!u || u.anon) {
       lib.checking = false;
+      lib.main = false;
       setOwner(false);
       return;
     }
@@ -5133,6 +5278,8 @@ const XlsxLite = (() => {
       lib.cloud.auth.signOut().catch(() => {});
       return;
     }
+    lib.main = await lib.cloud.auth.isMain().catch(() => false);
+    if (turn !== ownerCheck) return;
     setOwner(true);
     watchPlans();
     migrateFromClaude();
@@ -5221,12 +5368,17 @@ const XlsxLite = (() => {
       studentName(),
       state.halaqa.enabled ? state.halaqa.name : "",
       durationText() || "",
+      state.teacher || "",
       currentRows().map((r) => [r.memo, r.link, r.big, r.note || "", r.day || "", r.date || ""]),
     ]);
   }
   const isApproved = () => !!state.approved && state.approved.key === planKey();
   function updateSaveArea() {
     if (!state.plan) return;
+    $("teacherRow").hidden = !canSave();
+    const wa = $("shareWa");
+    wa.hidden = !(SITE_MODE && state.loaded && state.loaded.id);
+    if (!wa.hidden) wa.href = waHref(state.loaded);
     $("openNote").hidden = !state.loaded;
     if (state.loaded) $("openName").textContent = AR(state.loaded.name);
     const approved = isApproved();
@@ -5267,7 +5419,7 @@ const XlsxLite = (() => {
         if (SITE_MODE) body.by = same && state.loaded.by ? state.loaded.by : by;
         const ref = same ? plans.doc(state.loaded.id) : plans.doc();
         await ref.set(body);
-        state.loaded = { id: ref.id, name, textId: body.textId, textName: body.textName, halaqa: body.halaqa, by: body.by || null };
+        state.loaded = { id: ref.id, name, textId: body.textId, textName: body.textName, halaqa: body.halaqa, teacher: body.teacher, by: body.by || null };
         // الخطط المحفوظة يقرؤها كل من لديه الرابط، فلا يُحفظ فيها اسم الطالب
         note = `اعتُمدت الخطة وحُفظت في «الخطط المحفوظة» باسم «${AR(name)}»${studentName() ? " (دون اسم الطالب)" : ""}.`;
       }
@@ -5300,6 +5452,7 @@ const XlsxLite = (() => {
       days: state.plan.D,
       title: currentTitle(),
       halaqa: state.halaqa.enabled ? state.halaqa.name : "",
+      teacher: state.teacher || "",
       link: clone(state.link),
       withReview: state.withReview,
       review: clone(state.review),
@@ -5311,6 +5464,36 @@ const XlsxLite = (() => {
       description: planDescription(),
       savedAt: new Date().toISOString(),
     };
+  }
+
+  // رابط يفتح الخطة المحفوظة في الموقع، ورسالة واتساب تحمله (wa.me يفتح الواتساب مباشرة ليُختار من يُرسل إليه)
+  const planLink = (id) => location.origin + location.pathname + "#plan=" + encodeURIComponent(id);
+  const waHref = (p) => "https://wa.me/?text=" + encodeURIComponent(`«${AR(p.name || "خطة")}»\n${planLink(p.id)}`);
+  // رابط مرسَل: تُقرأ الخطة وحدها من قاعدة الخطط وتُفتح في صفحة الإنشاء
+  let sharedOpening = null;
+  async function openSharedPlan(id) {
+    if (!id || sharedOpening === id) return;
+    sharedOpening = id;
+    const st = $("status");
+    setStatus(st, "جارٍ فتح الخطة المرسلة…", "busy");
+    try {
+      await cloudReady;
+      const snap = await lib.db.collection("plans").doc(id).get();
+      if (!snap.exists) {
+        setStatus(st, "لم أجد هذه الخطة في «الخطط المحفوظة»؛ ربما حُذفت.", "error");
+        return;
+      }
+      const p = Object.assign({ id }, snap.data());
+      if (!openPlan(p)) {
+        setStatus(st, "متن هذه الخطة غير موجود في الصفحة.", "error");
+        return;
+      }
+      setStatus(st, `فُتحت «${AR(p.name)}»؛ صدّرها، أو عدّلها ثم اعتمدها.`, "ok");
+    } catch (e) {
+      setStatus(st, "تعذّر فتح الخطة الآن؛ تحقّق من الاتصال ثم أعد تحميل الصفحة.", "error");
+    } finally {
+      sharedOpening = null;
+    }
   }
 
   // يضع خطة محفوظة في صفحة الإنشاء كما حُفظت؛ يعيد false إن لم يوجد متنها
@@ -5327,7 +5510,9 @@ const XlsxLite = (() => {
       state.dates = { enabled: !!start, start, weekdays: p.dates.weekdays || [0, 1, 2, 3, 4], fill: p.dates.fill !== false };
     } else state.dates.enabled = false;
     if (p.level1) state.level1 = validLevel1(p.level1);
-    state.loaded = { id: p.id, name: p.name, textId: p.textId || null, textName: p.textName, halaqa: p.halaqa || "", by: p.by || null };
+    state.teacher = typeof p.teacher === "string" ? p.teacher : "";
+    fillTeacher();
+    state.loaded = { id: p.id, name: p.name, textId: p.textId || null, textName: p.textName, halaqa: p.halaqa || "", teacher: p.teacher || "", by: p.by || null };
     state.approved = null;
     selectText(id, p.days, { title: p.title, review: p.review, keepLink: true });
     applyRows((p.rows || []).map(([memo, link, big, note]) => ({ memo, link, big, note })));
@@ -5358,6 +5543,7 @@ const XlsxLite = (() => {
       levels: Object.assign({}, LEVEL_NAMES),
       texts: Object.fromEntries(TEXTS.map((t) => [t.id, { name: t.name, title: t.title, short: SHORT[t.id] || t.name }])),
       halaqat: HALAQAT.slice(),
+      teachers: TEACHERS.slice(),
       ready: Object.fromEntries((L.ready || []).map((e) => [entryKey(e), { title: e.title, note: e.note || "" }])),
       files: Object.fromEntries((L.texts || []).map((e) => [entryKey(e), { title: e.title }])),
     };
@@ -5379,6 +5565,10 @@ const XlsxLite = (() => {
     if (Array.isArray(o.halaqat)) {
       const list = [...new Set(o.halaqat.map(cleanName).filter(Boolean))].slice(0, 80);
       if (list.length) n.halaqat = list;
+    }
+    if (Array.isArray(o.teachers)) {
+      const list = [...new Set(o.teachers.map(cleanName).filter(Boolean))].slice(0, 80);
+      if (list.length) n.teachers = list;
     }
     for (const k of Object.keys(n.ready)) {
       const x = sub(sub(o, "ready"), k);
@@ -5409,6 +5599,7 @@ const XlsxLite = (() => {
       SHORT[t.id] = x.short;
     });
     HALAQAT.splice(0, HALAQAT.length, ...n.halaqat);
+    TEACHERS.splice(0, TEACHERS.length, ...n.teachers);
     if (typeof LIBRARY !== "undefined") {
       (LIBRARY.ready || []).forEach((e) => {
         const x = n.ready[entryKey(e)];
@@ -5426,6 +5617,9 @@ const XlsxLite = (() => {
     const keepOld = state.halaqa.enabled && state.loaded && state.loaded.halaqa === state.halaqa.name;
     if (!HALAQAT.includes(state.halaqa.name) && !keepOld) state.halaqa.name = HALAQAT[0];
     fillHalaqa();
+    const keepTeacher = state.loaded && state.loaded.teacher === state.teacher;
+    if (state.teacher && !TEACHERS.includes(state.teacher) && !keepTeacher) state.teacher = "";
+    fillTeacher();
     fillLevelSelect();
     if (state.text && state.plan) {
       if (state.text.id === "level-1") state.text = getText("level-1");
@@ -5483,6 +5677,10 @@ const XlsxLite = (() => {
         ? "لوحة التحكم لصاحب الصفحة فقط؛ سجّل دخولك من «دخول صاحب الصفحة» أسفل الصفحة."
         : "لوحة التحكم لصاحب الصفحة فقط.";
     $("adminForm").hidden = !owner;
+    // في الموقع: المشرفون لصاحب الموقع وحده، والنسخة الاحتياطية لكل مشرف
+    $("adminPeople").hidden = !(SITE_MODE && owner && lib.main);
+    $("adminBackup").hidden = !(SITE_MODE && owner);
+    if (SITE_MODE && owner && lib.main) watchAdmins();
     if (!owner || !NAME_DEFAULTS) return;
     const d = NAME_DEFAULTS;
     const n = effectiveNames(nameOverrides);
@@ -5509,6 +5707,8 @@ const XlsxLite = (() => {
     html += sec("المتون", "اسم كل متن وعنوان خطته واسمه المختصر", textsHtml);
     const hid = "nm-" + k++;
     html += sec("الحلقات", "اسم كل حلقة في سطر", `<div class="admin-field"><label for="${hid}">الحلقات بالترتيب الذي تظهر به في القائمة</label><textarea id="${hid}" data-key="halaqat" rows="${Math.min(14, n.halaqat.length + 2)}" placeholder="${esc(d.halaqat.join("\n"))}">${esc(n.halaqat.join("\n"))}</textarea></div>`);
+    const tid = "nm-" + k++;
+    html += sec("المعلمون", "اسم كل معلم في سطر؛ يُحفظ مع الخطة ولا يظهر فيها", `<div class="admin-field"><label for="${tid}">المعلمون بالترتيب الذي يظهرون به عند اعتماد الخطة</label><textarea id="${tid}" data-key="teachers" rows="${Math.min(14, n.teachers.length + 2)}" placeholder="${esc(d.teachers.join("\n"))}">${esc(n.teachers.join("\n"))}</textarea></div>`);
     const L = typeof LIBRARY !== "undefined" ? LIBRARY : {};
     html += sec("الخطط الجاهزة", "عنوان كل خطة وملاحظتها", (L.ready || [])
       .map((e) => {
@@ -5534,9 +5734,9 @@ const XlsxLite = (() => {
     const over = {};
     document.querySelectorAll("#adminFields [data-key]").forEach((el) => {
       const key = el.dataset.key;
-      if (key === "halaqat") {
+      if (key === "halaqat" || key === "teachers") {
         const list = [...new Set(el.value.split("\n").map(cleanName).filter(Boolean))];
-        if (list.length && list.join("\n") !== d.halaqat.join("\n")) over.halaqat = list;
+        if (list.length && list.join("\n") !== d[key].join("\n")) over[key] = list;
         return;
       }
       const path = key.split("|");
@@ -5570,8 +5770,167 @@ const XlsxLite = (() => {
       $("adminSave").disabled = false;
     }
   }
+  /* ---------- المشرفون (في الموقع): يضيفهم صاحب الموقع ويحذفهم، وقواعد Firestore تمنح المضافين صلاحية الحذف والتعديل ---------- */
+  let adminsOn = false;
+  const armedAdmin = {};
+  function watchAdmins() {
+    if (adminsOn || !lib.db) return;
+    adminsOn = true;
+    lib.db.collection("admins").onSnapshot(
+      (snap) => {
+        lib.admins = snap.docs.filter((d) => d.exists).map((d) => Object.assign({ email: d.id }, d.data()));
+        lib.adminsError = false;
+        renderAdminPeople();
+      },
+      () => {
+        lib.adminsError = true;
+        renderAdminPeople();
+      }
+    );
+  }
+  function renderAdminPeople() {
+    const me = (lib.user && lib.user.email) || "";
+    const rows = [`<li><span dir="ltr">${esc(me)}</span><span class="hint">صاحب الموقع</span></li>`];
+    if (lib.adminsError) rows.push(`<li class="hint">تعذّر تحميل قائمة المشرفين؛ تأكّد أن قواعد الحماية في Firebase محدّثة.</li>`);
+    for (const a of (lib.admins || []).slice().sort((x, y) => x.email.localeCompare(y.email)))
+      rows.push(
+        `<li><span dir="ltr">${esc(a.email)}</span><button type="button" class="danger-btn${armedAdmin[a.email] ? " is-armed" : ""}" data-unadmin="${esc(a.email)}">${armedAdmin[a.email] ? "تأكيد الحذف" : "حذف"}</button></li>`
+      );
+    $("adminList").innerHTML = rows.join("");
+  }
+  async function addAdmin() {
+    const st = $("adminPeopleStatus");
+    const email = $("adminEmail").value.trim().toLowerCase();
+    if (!/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(email)) {
+      setStatus(st, "اكتب بريداً صحيحاً، مثل name@gmail.com.", "error");
+      return;
+    }
+    if (email === ((lib.user && lib.user.email) || "").toLowerCase() || (lib.admins || []).some((a) => a.email === email)) {
+      setStatus(st, "هذا البريد مضاف من قبل.", "error");
+      return;
+    }
+    $("adminAdd").disabled = true;
+    try {
+      await lib.db.collection("admins").doc(email).set({ addedAt: new Date().toISOString(), addedBy: lib.user.email });
+      $("adminEmail").value = "";
+      setStatus(st, `أُضيف ${email}. يدخل من «دخول صاحب الصفحة» بحساب Google بهذا البريد.`, "ok");
+    } catch (err) {
+      setStatus(st, err && err.code === "invalid_argument" ? "لم تسمح قاعدة البيانات بالإضافة؛ تأكّد أن قواعد الحماية محدّثة." : "تعذّرت الإضافة الآن.", "error");
+    } finally {
+      $("adminAdd").disabled = false;
+    }
+  }
+  async function removeAdmin(email) {
+    const st = $("adminPeopleStatus");
+    if (!armedAdmin[email]) {
+      armedAdmin[email] = setTimeout(() => {
+        delete armedAdmin[email];
+        renderAdminPeople();
+      }, 4000);
+      renderAdminPeople();
+      return;
+    }
+    clearTimeout(armedAdmin[email]);
+    delete armedAdmin[email];
+    try {
+      await lib.db.collection("admins").doc(email).delete();
+      setStatus(st, `حُذف ${email} من المشرفين.`, "ok");
+    } catch (err) {
+      setStatus(st, "تعذّر الحذف الآن.", "error");
+      renderAdminPeople();
+    }
+  }
+
+  /* ---------- النسخة الاحتياطية (في الموقع): ملف فيه كل الخطط المحفوظة والمسميات، واسترجاعه ---------- */
+  async function downloadBackup() {
+    const st = $("backupStatus");
+    const btn = $("backupDown");
+    btn.disabled = true;
+    setStatus(st, "جارٍ تجهيز النسخة…", "busy");
+    try {
+      const snap = await lib.db.collection("plans").get();
+      const plans = snap.docs.filter((d) => d.exists).map((d) => Object.assign({ id: d.id }, d.data()));
+      const names = Object.keys(nameOverrides || {}).length ? nameOverrides : null;
+      const data = { app: "khutat", kind: "backup", version: 1, exportedAt: new Date().toISOString(), site: location.origin + location.pathname, plans, names };
+      const d = new Date();
+      const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      await offerFile(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }), `نسخة احتياطية - الخطط المحفوظة ${stamp}.json`, st);
+      if (st.dataset.kind !== "error") setStatus(st, `نُزّلت نسخة فيها ${plansWord(plans.length)}${names ? " والمسميات المعدّلة" : ""}.`, "ok");
+    } catch (err) {
+      setStatus(st, "تعذّر تجهيز النسخة الآن.", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  let pendingRestore = null;
+  async function readBackup(file) {
+    const st = $("backupStatus");
+    pendingRestore = null;
+    $("backupConfirm").hidden = true;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || data.app !== "khutat" || !Array.isArray(data.plans)) throw new Error("not a backup");
+      const plans = data.plans.filter((p) => p && typeof p === "object" && typeof p.name === "string" && Array.isArray(p.rows));
+      const names = data.names && typeof data.names === "object" && !Array.isArray(data.names) ? data.names : null;
+      if (!plans.length && !names) throw new Error("empty");
+      pendingRestore = { plans, names };
+      $("backupConfirm").textContent = `تأكيد استرجاع ${plansWord(plans.length)}`;
+      $("backupConfirm").hidden = false;
+      setStatus(st, `في الملف ${plansWord(plans.length)}${names ? " والمسميات" : ""}. الاسترجاع يضيفها ويحدّث المتطابق منها، ولا يحذف شيئاً.`, "");
+    } catch (err) {
+      setStatus(st, "هذا الملف ليس نسخة احتياطية من هذه الصفحة.", "error");
+    }
+  }
+  async function restoreBackup() {
+    const st = $("backupStatus");
+    const r = pendingRestore;
+    if (!r) return;
+    const btn = $("backupConfirm");
+    btn.disabled = true;
+    setStatus(st, "جارٍ الاسترجاع…", "busy");
+    try {
+      const items = r.plans.map((p) => {
+        const body = Object.assign({}, p);
+        const id = typeof body.id === "string" && /^[A-Za-z0-9_-]{1,120}$/.test(body.id) ? body.id : null;
+        delete body.id;
+        return { id, data: body };
+      });
+      await lib.db.collection("plans").setMany(items);
+      if (r.names) {
+        await lib.db.doc(NAMES_DOC).set({ names: r.names, savedAt: new Date().toISOString() });
+        receiveNames(r.names);
+      }
+      pendingRestore = null;
+      btn.hidden = true;
+      setStatus(st, `استُرجع ${plansWord(items.length)}${r.names ? " والمسميات" : ""}.`, "ok");
+    } catch (err) {
+      setStatus(st, err && err.code === "invalid_argument" ? "لم تسمح قاعدة البيانات بالاسترجاع." : "تعذّر الاسترجاع الآن؛ أعد المحاولة.", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   let resetArmed = null;
   function bindAdmin() {
+    $("adminAdd").addEventListener("click", addAdmin);
+    $("adminEmail").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addAdmin();
+      }
+    });
+    $("adminList").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-unadmin]");
+      if (b) removeAdmin(b.dataset.unadmin);
+    });
+    $("backupDown").addEventListener("click", downloadBackup);
+    $("backupUp").addEventListener("click", () => $("backupFile").click());
+    $("backupFile").addEventListener("change", (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (f) readBackup(f);
+      e.target.value = "";
+    });
+    $("backupConfirm").addEventListener("click", restoreBackup);
     $("adminFields").addEventListener("input", () => {
       adminDirty = true;
       setStatus($("adminStatus"), "", "");
@@ -5629,6 +5988,31 @@ const XlsxLite = (() => {
       .replace(/ة/g, "ه")
       .replace(/ى/g, "ي")
       .toLowerCase();
+  // التصفية: القوائم تُبنى مما في الخطط المحفوظة نفسها، وتختفي القائمة التي ليس فيها إلا خيار واحد
+  const NONE = "__none__";
+  const planLevel = (p) => {
+    const t = p.textId ? getText(p.textId) : null;
+    return t ? levelOf(t) : 0;
+  };
+  function fillFilter(sel, all, values) {
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${esc(all)}</option>` + values.map(([v, label]) => `<option value="${esc(v)}">${esc(label)}</option>`).join("");
+    sel.value = values.some(([v]) => v === cur) ? cur : "";
+    sel.hidden = values.length < 2;
+  }
+  function renderFilters() {
+    const levels = [...new Set(lib.plans.map(planLevel))].sort((a, b) => (a || 9) - (b || 9));
+    fillFilter($("libLevel"), "كل المستويات", levels.map((l) => [String(l), l ? LEVEL_NAMES[l] : "خطط مرفوعة"]));
+    const order = (list) => (h) => (list.includes(h) ? list.indexOf(h) : h ? 500 : 999);
+    const hal = [...new Set(lib.plans.map((p) => p.halaqa || ""))];
+    const ho = order(HALAQAT);
+    hal.sort((a, b) => ho(a) - ho(b) || a.localeCompare(b, "ar"));
+    fillFilter($("libHalaqa"), "كل الحلقات", hal.map((h) => [h || NONE, h ? "حلقة " + h : "دون حلقة"]));
+    const tea = [...new Set(lib.plans.map((p) => p.teacher || ""))];
+    const to = order(TEACHERS);
+    tea.sort((a, b) => to(a) - to(b) || a.localeCompare(b, "ar"));
+    fillFilter($("libTeacher"), "كل المعلمين", tea.map((h) => [h || NONE, h || "دون معلم"]));
+  }
   function renderLibrary() {
     const list = $("libList");
     const note = $("libNote");
@@ -5658,10 +6042,20 @@ const XlsxLite = (() => {
         : lib.owner
           ? "تُحفظ هنا كل خطة تعتمدها في صفحة «إنشاء خطة»، ويفتحها كل من يفتح الصفحة ويصدّرها."
           : "افتح الخطة لتعديلها قبل التصدير، أو نزّلها ملف وورد أو PDF مباشرة.";
+      renderFilters();
       const q = fold($("libSearch").value);
-      const shown = q
-        ? lib.plans.filter((p) => fold([p.name, p.textName, p.halaqa, savedDescription(p)].join(" ")).includes(q))
-        : lib.plans;
+      const fl = $("libLevel").value;
+      const fh = $("libHalaqa").value;
+      const ft = $("libTeacher").value;
+      const shown = lib.plans.filter(
+        (p) =>
+          (!q || fold([p.name, p.textName, p.halaqa, p.teacher, savedDescription(p)].join(" ")).includes(q)) &&
+          (!fl || String(planLevel(p)) === fl) &&
+          (!fh || (p.halaqa || NONE) === fh) &&
+          (!ft || (p.teacher || NONE) === ft)
+      );
+      const filtered = !!(q || fl || fh || ft);
+      $("libCount").textContent = filtered && shown.length ? `تظهر ${AR(shown.length)} من ${plansWord(n)}.` : "";
       list.innerHTML = shown.length
         ? shown
             .map((p) => {
@@ -5671,6 +6065,7 @@ const XlsxLite = (() => {
                 AR((t && t.name) || p.textName || ""),
                 daysWord(p.days || (p.rows || []).length),
                 p.halaqa ? "حلقة " + p.halaqa : "",
+                p.teacher ? "المعلم: " + p.teacher : "",
                 saved ? "حُفظت " + AR(saved) + " ه" : "",
               ].filter(Boolean).join("، ");
               const open = state.loaded && state.loaded.id === p.id;
@@ -5681,12 +6076,13 @@ const XlsxLite = (() => {
               <button type="button" class="link-btn" data-open="${pid}">${open ? "مفتوحة" : "فتح"}</button>
               <button type="button" class="link-btn" data-word="${pid}">تنزيل وورد</button>
               <button type="button" class="link-btn" data-pdf="${pid}">تنزيل PDF</button>
+              ${SITE_MODE ? `<a class="link-btn wa-link" href="${esc(waHref(p))}" target="_blank" rel="noopener">إرسال بالواتساب</a>` : ""}
               ${canDelete(p) ? `<button type="button" class="danger-btn${armed[p.id] ? " is-armed" : ""}" data-del="${pid}">${armed[p.id] ? "تأكيد الحذف" : "حذف"}</button>` : ""}
             </div>
           </li>`;
             })
             .join("")
-        : `<li class="lib-item lib-none">لا خطط تطابق البحث.</li>`;
+        : `<li class="lib-item lib-none">لا خطط تطابق ${filtered && !q ? "التصفية" : "البحث"}.</li>`;
     }
     updateSaveArea();
   }
@@ -5704,7 +6100,15 @@ const XlsxLite = (() => {
     });
     if (name === "ready" || name === "texts") renderFiles(name);
   }
-  const route = () => showView(decodeURIComponent(location.hash.slice(1)));
+  const route = () => {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (SITE_MODE && h.startsWith("plan=")) {
+      showView("create");
+      openSharedPlan(h.slice(5));
+      return;
+    }
+    showView(h);
+  };
   function go(name) {
     if (location.hash.slice(1) !== name) location.hash = name;
     else showView(name);
@@ -5874,6 +6278,12 @@ const XlsxLite = (() => {
       state.halaqa.name = e.target.value;
       renderReadout();
       renderSheets();
+      updateSaveArea();
+      savePrefs();
+    });
+    // المعلم لا يدخل في ورقة الخطة، فلا تُعاد المعاينة؛ يتغير الاعتماد وحده
+    $("teacher").addEventListener("change", (e) => {
+      state.teacher = e.target.value;
       updateSaveArea();
       savePrefs();
     });
@@ -6154,6 +6564,7 @@ const XlsxLite = (() => {
       if (lib.cloud) lib.cloud.auth.signOut().catch(() => {});
     });
     $("libSearch").addEventListener("input", renderLibrary);
+    for (const id of ["libLevel", "libHalaqa", "libTeacher"]) $(id).addEventListener("change", renderLibrary);
     $("libList").addEventListener("click", (e) => {
       const st = $("libStatus");
       const openBtn = e.target.closest("[data-open]");
@@ -6206,6 +6617,8 @@ const XlsxLite = (() => {
     if (prefs.link) Object.assign(state.link, prefs.link);
     if (typeof prefs.withReview === "boolean") state.withReview = prefs.withReview;
     if (prefs.halaqa && HALAQAT.includes(prefs.halaqa.name)) state.halaqa = { enabled: !!prefs.halaqa.enabled, name: prefs.halaqa.name };
+    if (typeof prefs.teacher === "string" && TEACHERS.includes(prefs.teacher)) state.teacher = prefs.teacher;
+    fillTeacher();
     if (prefs.student) state.student.enabled = !!prefs.student.enabled;
     if (prefs.dates && Hijri.available) {
       const d = prefs.dates;
