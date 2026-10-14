@@ -4401,6 +4401,7 @@ const XlsxLite = (() => {
 (function () {
   "use strict";
   const SDK = "https://www.gstatic.com/firebasejs/12.19.0/";
+  const BATCH = 15;
 
   // Firestore لا يقبل مصفوفة داخل مصفوفة (صفوف الخطة)، فتُلفّ المصفوفة الداخلية في {__a: [...]}
   function enc(v, inArray) {
@@ -4490,8 +4491,9 @@ const XlsxLite = (() => {
         onSnapshot: (cb, onErr) =>
           watch(() => fb.getDocs(cons.length ? fb.query(col, ...cons) : col).then((s) => ({ docs: s.docs.map(snap) })), cb, onErr),
         get: () => fb.getDocs(cons.length ? fb.query(col, ...cons) : col).then((s) => ({ docs: s.docs.map(snap) }), fail),
-        // كتابة مستندات كثيرة دفعة واحدة (الاسترجاع، وأجزاء الملفات): ٤٠٠ مستند أو نحو ٨ م.ب في كل دفعة
-        // (حدّ الطلب الواحد في Firestore ١٠ م.ب)، ثم تُقرأ القوائم مرة واحدة
+        // كتابة مستندات كثيرة دفعات (الاسترجاع، وأجزاء الملفات): ١٥ مستنداً أو نحو ٨ م.ب في كل دفعة،
+        // لأن حدّ الطلب الواحد في Firestore ١٠ م.ب، وقواعد المشرفين تقرأ مستنداً لكل كتابة (٢٠ قراءة للدفعة على الأكثر)؛
+        // ثم تُقرأ القوائم مرة واحدة
         setMany: async (items) => {
           let batch = null;
           let n = 0;
@@ -4505,7 +4507,7 @@ const XlsxLite = (() => {
           for (const it of items) {
             const data = enc(it.data, false);
             const s = JSON.stringify(data).length;
-            if (batch && (n >= 400 || size + s > 8000000)) await flush();
+            if (batch && (n >= BATCH || size + s > 8000000)) await flush();
             if (!batch) batch = fb.writeBatch(fs);
             batch.set(it.id ? fb.doc(col, it.id) : fb.doc(col), data);
             n++;
@@ -4515,9 +4517,9 @@ const XlsxLite = (() => {
           refresh();
         },
         deleteMany: async (ids) => {
-          for (let i = 0; i < ids.length; i += 400) {
+          for (let i = 0; i < ids.length; i += BATCH) {
             const batch = fb.writeBatch(fs);
-            for (const id of ids.slice(i, i + 400)) batch.delete(fb.doc(col, id));
+            for (const id of ids.slice(i, i + BATCH)) batch.delete(fb.doc(col, id));
             await batch.commit().catch(fail);
           }
           refresh();
