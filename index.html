@@ -508,6 +508,53 @@ input.mini {
 .text-checks .hint {
   padding: 4px 0 2px;
 }
+.tadded .tplus {
+  width: 18px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--accent);
+}
+.tadded .tname {
+  flex: 1 1 8em;
+  min-width: 0;
+}
+.tadded .tname small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.tmore,
+.tstart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tmore select {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 0.92rem;
+}
+.tstart input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.tstart label {
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.tstart .hint {
+  flex-basis: 100%;
+  padding: 0;
+}
+.link-btn.is-armed {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .text-checks .hint[data-kind="error"] {
   color: var(--danger);
 }
@@ -1319,6 +1366,50 @@ a.secondary {
 a.link-btn {
   font-size: 0.86rem;
 }
+/* ---------- لوحة التحكم: الخطط الجاهزة والمتون ---------- */
+.files-admin-group {
+  margin-bottom: 12px;
+}
+.files-admin-group .lib-list {
+  margin-top: 6px;
+}
+.lib-item.is-hidden .lib-main b {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.files-form {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 10px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+}
+.files-form.is-editing {
+  background: var(--accent-soft);
+  margin-inline: -16px;
+  padding: 4px 16px 14px;
+  border-top: 0;
+  border-radius: 8px;
+}
+.files-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.files-kind[hidden] {
+  display: none;
+}
+.admin-field input[type="file"] {
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  font-size: 0.9rem;
+}
+.admin-field[hidden] {
+  display: none;
+}
+
 /* ---------- لوحة التحكم: المشرفون والنسخة الاحتياطية ---------- */
 .admin-extra {
   margin-top: 12px;
@@ -1678,6 +1769,31 @@ a.link-btn {
       </div>
       <p class="status" id="adminStatus" role="status" aria-live="polite"></p>
     </form>
+    <details class="admin-sec admin-extra" id="adminFiles" open hidden>
+      <summary>الخطط الجاهزة والمتون PDF<span>إضافة ملفات وورد وPDF وحذفها، وإخفاء ما لا تريده من الموجود</span></summary>
+      <div id="filesAdmin"></div>
+      <form class="files-form" id="filesForm" novalidate>
+        <h3 class="admin-level" id="filesFormTitle">إضافة ملف</h3>
+        <div class="files-kind" id="filesKind" role="radiogroup" aria-label="نوع الإضافة">
+          <label class="check"><input type="radio" name="fkind" value="ready" checked> خطة جاهزة (وورد وPDF)</label>
+          <label class="check"><input type="radio" name="fkind" value="texts"> متن PDF</label>
+        </div>
+        <div class="admin-grid">
+          <div class="admin-field"><label for="fTitle">العنوان</label><input id="fTitle" type="text" autocomplete="off" maxlength="160"></div>
+          <div class="admin-field"><label for="fLevel">المستوى</label><select id="fLevel"></select></div>
+          <div class="admin-field" id="fNoteRow"><label for="fNote">الملاحظة (كالمدة)</label><input id="fNote" type="text" autocomplete="off" maxlength="160" placeholder="60 يوماً"></div>
+          <div class="admin-field" id="fDocxRow"><label for="fDocx">ملف وورد</label><input id="fDocx" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></div>
+          <div class="admin-field"><label for="fPdf">ملف PDF</label><input id="fPdf" type="file" accept=".pdf,application/pdf"></div>
+        </div>
+        <p class="hint" id="filesFormHint"></p>
+        <div class="admin-actions">
+          <button type="submit" class="primary" id="fSave">إضافة</button>
+          <button type="button" class="secondary" id="fCancel" hidden>إلغاء التعديل</button>
+        </div>
+      </form>
+      <p class="status" id="filesStatus" role="status" aria-live="polite"></p>
+      <p class="hint">تُحفظ الملفات في قاعدة بيانات الموقع، ولا يزيد الملف على ١٥ م.ب. احتفظ بنسخها عندك، فالنسخة الاحتياطية لا تشملها. وما في الصفحة أصلاً يُخفى ولا يُحذف، فتستطيع إظهاره متى شئت.</p>
+    </details>
     <details class="admin-sec admin-extra" id="adminPeople" open hidden>
       <summary>المشرفون<span>يدخلون بحساب Google فيحذفون الخطط ويعدّلونها ويعدّلون المسميات</span></summary>
       <ul class="admin-list" id="adminList"></ul>
@@ -4374,11 +4490,34 @@ const XlsxLite = (() => {
         onSnapshot: (cb, onErr) =>
           watch(() => fb.getDocs(cons.length ? fb.query(col, ...cons) : col).then((s) => ({ docs: s.docs.map(snap) })), cb, onErr),
         get: () => fb.getDocs(cons.length ? fb.query(col, ...cons) : col).then((s) => ({ docs: s.docs.map(snap) }), fail),
-        // كتابة مستندات كثيرة دفعة واحدة (الاسترجاع): ٤٠٠ في كل دفعة، ثم تُقرأ القوائم مرة واحدة
+        // كتابة مستندات كثيرة دفعة واحدة (الاسترجاع، وأجزاء الملفات): ٤٠٠ مستند أو نحو ٨ م.ب في كل دفعة
+        // (حدّ الطلب الواحد في Firestore ١٠ م.ب)، ثم تُقرأ القوائم مرة واحدة
         setMany: async (items) => {
-          for (let i = 0; i < items.length; i += 400) {
+          let batch = null;
+          let n = 0;
+          let size = 0;
+          const flush = async () => {
+            if (batch && n) await batch.commit().catch(fail);
+            batch = null;
+            n = 0;
+            size = 0;
+          };
+          for (const it of items) {
+            const data = enc(it.data, false);
+            const s = JSON.stringify(data).length;
+            if (batch && (n >= 400 || size + s > 8000000)) await flush();
+            if (!batch) batch = fb.writeBatch(fs);
+            batch.set(it.id ? fb.doc(col, it.id) : fb.doc(col), data);
+            n++;
+            size += s;
+          }
+          await flush();
+          refresh();
+        },
+        deleteMany: async (ids) => {
+          for (let i = 0; i < ids.length; i += 400) {
             const batch = fb.writeBatch(fs);
-            for (const it of items.slice(i, i + 400)) batch.set(it.id ? fb.doc(col, it.id) : fb.doc(col), enc(it.data, false));
+            for (const id of ids.slice(i, i + 400)) batch.delete(fb.doc(col, id));
             await batch.commit().catch(fail);
           }
           refresh();
@@ -4503,7 +4642,9 @@ const XlsxLite = (() => {
   const norm = (s) => ASCII(stripMarks(s)).replace(/\s+/g, " ").trim();
   // المقدار كما يظهر في وورد: بعد الخط المائل علامة اتجاه تُبقي «٢/٧٩-٨٢» مقروءاً من اليمين
   const disp = (s) => AR(stripMarks(s)).replace(/\//g, "/" + RLM);
-  const isMukhtasar = (t) => !!t && /^mukhtasar/.test(t.id);
+  // متن الخطة الأصلي (لمتن يبدأ من صفحة معيّنة رقمه «mix:…»، ولما قبل صفحة البدء «part:…»)
+  const baseOf = (t) => (t ? t.base || t.id : "");
+  const isMukhtasar = (t) => !!t && /^mukhtasar/.test(baseOf(t));
   function parseIntAny(v) {
     const n = parseInt(ASCII(String(v)).replace(/[^\d]/g, ""), 10);
     return Number.isFinite(n) ? n : NaN;
@@ -4622,14 +4763,93 @@ const XlsxLite = (() => {
       segments: parts.map((t) => ({ id: t.id, days: t.days.length })),
     });
   }
+  /* خطة من متون مختارة بترتيب يحدده المستخدم: «mix:الطحاوية@150;bulugh»؛ أولها قد يبدأ من صفحة معيّنة
+     (ما قبلها محفوظ: يُتابَع منه الربط ويدخل في المراجعة)، وما بعده قد يكون من أي مستوى ولو لم يكن تالياً له. */
+  function daysFrom(days, from) {
+    const out = [];
+    for (const d of days) {
+      const r = PlanCore.parseRange(d);
+      if (r.b < from) continue;
+      out.push(r.a >= from ? d : PlanCore.fmt(r.level, from, r.b));
+    }
+    return out;
+  }
+  function daysBefore(days, from) {
+    const out = [];
+    for (const d of days) {
+      const r = PlanCore.parseRange(d);
+      if (r.a >= from) break;
+      out.push(r.b < from ? d : PlanCore.fmt(r.level, r.a, from - 1));
+    }
+    return out;
+  }
+  const pageSpan = (t) => ({ a: PlanCore.parseRange(t.days[0]).a, b: PlanCore.parseRange(t.days[t.days.length - 1]).b });
+  function mixPlan(id) {
+    if (selCache[id]) return selCache[id];
+    const m = /^mix:(.+)$/.exec(id || "");
+    if (!m) return null;
+    const segs = m[1].split(";").map((x) => {
+      const [tid, from] = x.split("@");
+      return { t: TEXTS.find((t) => t.id === tid), from: +from || 0 };
+    });
+    if (!segs.length || segs.some((x) => !x.t) || new Set(segs.map((x) => x.t.id)).size !== segs.length) return null;
+    for (const x of segs) {
+      const span = pageSpan(x.t);
+      if (x.from && (x.from <= span.a || x.from > span.b)) x.from = 0;
+      x.days = x.from ? daysFrom(x.t.days, x.from) : x.t.days;
+    }
+    if (segs.length === 1 && !segs[0].from) return segs[0].t;
+    const L = segs[0].t.level;
+    const at = (x) => (x.from ? ` من صفحة ${AR(x.from)}` : "");
+    let t;
+    if (segs.length === 1) {
+      const x = segs[0];
+      t = { id, base: x.t.id, level: L, name: AR(x.t.name) + at(x), title: x.t.title, qr: x.t.qr, days: x.days };
+    } else {
+      const same = segs.every((x) => x.t.level === L);
+      t = {
+        id,
+        isLevel: true,
+        isSel: true,
+        isMix: true,
+        level: L,
+        name: `${same ? LEVEL_NAMES[L] : "متون مختارة"}: ${segs.map((x) => (SHORT[x.t.id] || AR(x.t.name)) + at(x)).join("، ")}`,
+        title: same ? `خطة ${LEVEL_NAMES[L]}` : "خطة المتون",
+        qr: null,
+        parts: segs.map((x) => x.t.id),
+        days: segs.flatMap((x) => x.days),
+        segments: segs.map((x) => ({ id: x.t.id, days: x.days.length })),
+      };
+    }
+    t.segs = segs.map((x) => ({ id: x.t.id, from: x.from }));
+    return (selCache[id] = t);
+  }
+  // ما حُفظ من متن قبل صفحة البدء: «part:الطحاوية@150»
+  function partText(id) {
+    if (selCache[id]) return selCache[id];
+    const m = /^part:([^@]+)@(\d+)$/.exec(id || "");
+    const t = m && TEXTS.find((x) => x.id === m[1]);
+    const days = t ? daysBefore(t.days, +m[2]) : [];
+    if (!days.length) return null;
+    return (selCache[id] = { id, base: t.id, isPart: true, level: t.level, name: `${AR(t.name)} إلى صفحة ${AR(+m[2] - 1)}`, title: t.title, qr: t.qr, days });
+  }
+  const segsOf = (t) => (t && t.segs) || [];
+  const partsOf = (t) => segsOf(t).filter((x) => x.from).map((x) => getText(`part:${x.id}@${x.from}`)).filter(Boolean);
   const getText = (id) =>
     id === "level-1"
       ? level1Plan()
-      : allTexts().find((t) => t.id === id) || LEVEL_PLANS.find((t) => t.id === id) || selectionPlan(id);
+      : allTexts().find((t) => t.id === id) || LEVEL_PLANS.find((t) => t.id === id) || selectionPlan(id) || mixPlan(id) || partText(id);
+  // رقم الخطة من متونها: كلها من المستوى وتبدأ من أولها ← رقم المستوى أو المتن أو بعض متونه كما كان؛ وإلا «mix:»
+  function compositionId(lvl, ids, from) {
+    const inLevel = levelTexts(lvl).map((t) => t.id);
+    if (!from && ids.every((id) => inLevel.includes(id))) return selectionId(lvl, ids);
+    if (!from && ids.length === 1) return ids[0];
+    return "mix:" + ids.map((id, i) => (i === 0 && from ? `${id}@${from}` : id)).join(";");
+  }
   // متون المستوى في قائمة «المتون» بترتيب البرنامج (المستوى الأول: المختصر بطبعته ثم الأذكار والآداب)
   const levelTexts = (lvl) => (lvl === 1 ? [state.level1.edition, "adhkar"].map(getText) : TEXTS.filter((t) => t.level === lvl));
   // ما عُلِّم من متون المستوى في الخطة
-  const ownIds = (t = state.text) => (t.isLevel ? t.parts.slice() : [t.id]);
+  const ownIds = (t = state.text) => (t.isLevel ? t.parts.slice() : [baseOf(t)]);
   // الخطة من المتون المعلَّمة: كلها خطة المستوى كاملاً، وواحد منها خطته، وغير ذلك خطة تجمعها
   function selectionId(lvl, ids) {
     const all = levelTexts(lvl).map((t) => t.id);
@@ -4718,19 +4938,62 @@ const XlsxLite = (() => {
       if (state.text) $("text").value = state.text.id;
       return;
     }
-    const own = new Set(state.text && levelOf(state.text) === lvl ? ownIds(state.text) : []);
-    box.innerHTML =
-      levelTexts(lvl)
-        .map((t, i) => {
-          const on = own.has(t.id);
-          const ed = lvl === 1 && isMukhtasar(t);
-          const label = ed ? AR(t.name).replace(/\s*\([^()]*ط[^()]*\)\s*$/, "") : AR(t.name);
-          const editions = ed
-            ? `<select id="l1Edition" aria-label="طبعة المختصر">${MUKHTASAR_EDITIONS.map((id) => `<option value="${id}"${id === t.id ? " selected" : ""}>${esc(editionLabel(id))}</option>`).join("")}</select>`
-            : "";
-          return `<div class="tcheck${on ? "" : " is-off"}"><input type="checkbox" id="tc-${i}" data-id="${t.id}"${on ? " checked" : ""}><label for="tc-${i}">${esc(label)}</label>${editions}<span class="tdays">${daysWord(t.days.length)}</span></div>`;
-        })
-        .join("") + `<p class="hint" id="textChecksNote">ما لا تعلّمه لا يدخل في الخطة ولا في المراجعة.</p>`;
+    const c = composition(lvl);
+    const own = new Set(c.ids);
+    const inLevel = levelTexts(lvl);
+    const levelIds = new Set(inLevel.map((t) => t.id));
+    const first = c.ids[0];
+    const daysOf = (t) => daysWord(t.id === first && c.from ? daysFrom(t.days, c.from).length : t.days.length);
+    const rows = inLevel.map((t, i) => {
+      const on = own.has(t.id);
+      const ed = lvl === 1 && isMukhtasar(t);
+      const label = ed ? AR(t.name).replace(/\s*\([^()]*ط[^()]*\)\s*$/, "") : AR(t.name);
+      const editions = ed
+        ? `<select id="l1Edition" aria-label="طبعة المختصر">${MUKHTASAR_EDITIONS.map((id) => `<option value="${id}"${id === t.id ? " selected" : ""}>${esc(editionLabel(id))}</option>`).join("")}</select>`
+        : "";
+      return `<div class="tcheck${on ? "" : " is-off"}"><input type="checkbox" id="tc-${i}" data-id="${t.id}"${on ? " checked" : ""}><label for="tc-${i}">${esc(label)}</label>${editions}<span class="tdays">${daysOf(t)}</span></div>`;
+    });
+    // متون أُضيفت بعدها من مستويات أخرى
+    const added = c.ids
+      .filter((id) => !levelIds.has(id))
+      .map((id) => {
+        const t = getText(id);
+        return `<div class="tcheck tadded"><span class="tplus" aria-hidden="true">+</span><span class="tname">${esc(AR(t.name))} <small>${esc(LEVEL_NAMES[t.level] || "")}</small></span><span class="tdays">${daysOf(t)}</span><button type="button" class="link-btn" data-unappend="${t.id}" aria-label="إزالة ${esc(AR(t.name))} من الخطة">إزالة</button></div>`;
+      });
+    const groups = {};
+    TEXTS.filter((t) => !levelIds.has(t.id) && !own.has(t.id)).forEach((t) => (groups[t.level] = groups[t.level] || []).push(t));
+    const more = Object.keys(groups).length
+      ? `<div class="tmore"><select id="appendText" aria-label="إضافة متن بعدها من مستوى آخر"><option value="">+ إضافة متن بعدها من مستوى آخر</option>${Object.keys(groups)
+          .map((l) => `<optgroup label="${esc(LEVEL_NAMES[l] || "")}">${groups[l].map((t) => `<option value="${t.id}">${esc(AR(t.name))}</option>`).join("")}</optgroup>`)
+          .join("")}</select></div>`
+      : "";
+    // البدء من صفحة في أول متن من الخطة (والأصل المتن كاملاً)
+    const ft = first && getText(first);
+    const span = ft ? pageSpan(ft) : null;
+    const start = ft
+      ? `<div class="tstart"><input type="checkbox" id="startOn"${c.from ? " checked" : ""}><label for="startOn">البدء من صفحة معيّنة في «${esc(SHORT[ft.id] || AR(ft.name))}»</label>` +
+        `<input id="startPage" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="صفحة البدء" value="${c.from ? AR(c.from) : ""}"${c.from ? "" : " hidden"}>` +
+        `<span class="hint" id="startHint"${c.from ? "" : " hidden"}>من ${AR(span.a + 1)} إلى ${AR(span.b)}؛ وما قبلها محفوظ يُراجَع ويبدأ منه الربط.</span></div>`
+      : "";
+    box.innerHTML = rows.join("") + added.join("") + more + start + `<p class="hint" id="textChecksNote">ما لا تعلّمه لا يدخل في الخطة ولا في المراجعة.</p>`;
+  }
+  // متون الخطة الحالية بترتيبها، وصفحة بدء أولها (إن كانت الخطة من هذا المستوى)
+  function composition(lvl) {
+    const t = state.text;
+    if (!t || levelOf(t) !== lvl) return { ids: [], from: 0 };
+    const s0 = segsOf(t)[0];
+    return { ids: ownIds(t), from: s0 && s0.from ? s0.from : 0 };
+  }
+  // خطة جديدة من متون مختارة: متون المستوى بترتيب البرنامج، ثم ما أُضيف بعدها بترتيب إضافته
+  function recompose(ids, from) {
+    const lvl = +$("level").value;
+    const inLevel = levelTexts(lvl).map((t) => t.id);
+    const all = inLevel.filter((id) => ids.includes(id)).concat(ids.filter((id) => !inLevel.includes(id)));
+    state.loaded = null;
+    state.approved = null;
+    // تغيّرت متون الخطة: تبدأ بأيامها الأصلية
+    selectText(compositionId(lvl, all, from));
+    renderLibrary();
   }
 
   /* ---------- الحالة ---------- */
@@ -4759,7 +5022,7 @@ const XlsxLite = (() => {
   const clampDays = (n) => Math.max(1, Math.min(Math.round(n) || 1, state.maxDays));
   // عدد أيام الربط في الخطط الأصلية؛ لخطة المستوى متوسط متونه بحسب أيامها
   function linkOrig(t) {
-    if (!t.isLevel) return LINK_ORIG[t.id] || 3;
+    if (!t.isLevel) return LINK_ORIG[baseOf(t)] || 3;
     const total = t.segments.reduce((a, sg) => a + sg.days, 0);
     return t.segments.reduce((a, sg) => a + (LINK_ORIG[sg.id] || 3) * sg.days, 0) / total;
   }
@@ -4770,7 +5033,9 @@ const XlsxLite = (() => {
   // ولأول المستوى الثاني آخر المستوى الأول؛ وفي الخطة الجاهزة لمتن واحد: ما قبله في ترتيب البرنامج
   function defaultPrev(t) {
     if (!t || t.custom) return null;
-    const first = t.isLevel ? getText(t.parts[0]) : t;
+    const s0 = segsOf(t)[0];
+    if (s0 && s0.from) return getText(`part:${s0.id}@${s0.from}`);
+    const first = t.isLevel ? getText(t.parts[0]) : getText(baseOf(t));
     if (!first || first.level <= 1) return null;
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
     // المتون الإضافية بعد المستوى السادس، وكل منها مستقل عن غيره
@@ -4784,7 +5049,7 @@ const XlsxLite = (() => {
   function selectText(id, days, preset = {}) {
     const t = getText(id) || getText("level-1");
     // طبعة المختصر المختارة هي طبعة المستوى الأول في القائمة وفي المراجعة
-    if (isMukhtasar(t)) state.level1.edition = t.id;
+    if (isMukhtasar(t) && !t.isLevel) state.level1.edition = baseOf(t);
     state.text = t;
     state.maxDays = pagesOf(t.id);
     state.days = clampDays(days || t.days.length);
@@ -4803,13 +5068,14 @@ const XlsxLite = (() => {
     renderReview();
     regenerate();
   }
+  const segsOrParts = (t) => (t.segs ? t.segs : t.parts.map((id) => ({ id, from: 0 })));
   function renderTextInfo() {
     const t = state.text;
     const first = PlanCore.parseRange(t.days[0]);
     const last = PlanCore.parseRange(t.days[t.days.length - 1]);
     const edge = (r, v) => AR(PlanCore.fmt(r.level || null, v, v));
     $("textInfo").textContent = t.isLevel
-      ? `في «خطط المتون»: ${daysWord(t.days.length)}، ${pagesWord(state.maxDays)}، متونه بالترتيب: ${t.parts.map((x) => AR(getText(x).name)).join("، ")}.`
+      ? `في «خطط المتون»: ${daysWord(t.days.length)}، ${pagesWord(state.maxDays)}، متونه بالترتيب: ${segsOrParts(t).map((x) => AR(getText(x.id).name) + (x.from ? ` من صفحة ${AR(x.from)}` : "")).join("، ")}.`
       : `${t.custom ? "من الملف المرفوع" : "في «خطط المتون»"}: ${daysWord(t.days.length)}، ${pagesWord(state.maxDays)} من ${edge(first, first.a)} إلى ${edge(last, last.b)}.`;
   }
 
@@ -4823,7 +5089,7 @@ const XlsxLite = (() => {
   // اسم المتن الذي تبدأ مراجعته (في خانة الملاحظات)
   const noteName = (id) => {
     const t = id === "self" ? state.text : getText(id);
-    return t ? SHORT[t.id] || AR(t.name) : "";
+    return t ? SHORT[baseOf(t)] || AR(t.name) : "";
   };
   function buildPlan() {
     return PlanCore.makePlan(state.text, {
@@ -4910,8 +5176,10 @@ const XlsxLite = (() => {
     allTexts().forEach((t) => {
       if (!own.has(t.id)) (groups[t.level] = groups[t.level] || []).push(t);
     });
+    const parts = partsOf(state.text);
     sel.innerHTML =
       (cur ? "" : `<option value="">اختر المتن السابق</option>`) +
+      (parts.length ? `<optgroup label="قبل صفحة البدء">${parts.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join("")}</optgroup>` : "") +
       Object.keys(groups)
         .map((lvl) => `<optgroup label="${LEVEL_NAMES[lvl] || "خطط مرفوعة"}">${groups[lvl].map((t) => `<option value="${t.id}">${esc(AR(t.name))}</option>`).join("")}</optgroup>`)
         .join("");
@@ -4995,7 +5263,7 @@ const XlsxLite = (() => {
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
     const upto =
       t.custom || t.level > 6 ? rest.length : t.isLevel || !state.prevInLevel ? rest.findIndex((x) => x.level === t.level) : rest.indexOf(t);
-    return upto > 0 ? out.concat(rest.slice(0, upto)) : out;
+    return (upto > 0 ? out.concat(rest.slice(0, upto)) : out).filter((x) => !own.has(x.id)).concat(partsOf(t));
   }
   // المتن الذي يلي آخر متن في القائمة
   function nextReviewSource() {
@@ -5018,9 +5286,10 @@ const XlsxLite = (() => {
   function levelSequence(t, lv) {
     const L = t.custom ? 7 : t.level;
     let seq = [];
+    const own = new Set(ownIds(t));
     if (L > 1) {
-      const ids = level1Ids();
-      seq.push({ label: LEVEL_NAMES[1], names: ids.map((id) => AR(getText(id).name)), ids, lvl: 1 });
+      const ids = level1Ids().filter((id) => !own.has(id));
+      if (ids.length) seq.push({ label: LEVEL_NAMES[1], names: ids.map((id) => AR(getText(id).name)), ids, lvl: 1 });
     } else if (!t.isLevel && t.id === "adhkar" && state.prevInLevel) {
       // الأذكار والآداب وحده في خطة جاهزة: يُراجَع المختصر قبله
       const e = state.level1.edition;
@@ -5036,6 +5305,7 @@ const XlsxLite = (() => {
       // مستوى الخطة: ما عُلِّم منه هو «المتن نفسه»، وغير المعلَّم لا يُراجَع (إلا في الخطة الجاهزة لمتن واحد)
       if (partial && (t.isLevel || !state.prevInLevel)) continue;
       if (partial) texts = texts.slice(0, texts.indexOf(t));
+      texts = texts.filter((x) => !own.has(x.id));
       if (!texts.length) continue;
       texts.sort(order);
       seq.push({
@@ -5045,7 +5315,9 @@ const XlsxLite = (() => {
         lvl,
       });
     }
-    if (lv.self) seq.push({ label: t.isLevel ? "ما حُفظ من متون المستوى نفسه" : "ما حُفظ من المتن نفسه", self: true, lvl: 7 });
+    // ما حُفظ من متون الخطة قبل صفحة البدء
+    for (const pt of partsOf(t)) seq.push({ label: pt.name, ids: [pt.id], lvl: Math.min(pt.level, 6) });
+    if (lv.self) seq.push({ label: t.isLevel ? (t.isMix ? "ما حُفظ من متون الخطة نفسها" : "ما حُفظ من متون المستوى نفسه") : "ما حُفظ من المتن نفسه", self: true, lvl: 7 });
     // البدء من مستوى معيّن: تبدأ الدورة منه، ثم تكمل وتعود إلى أولها
     if (lv.startOn && seq.length) {
       const i = seq.findIndex((g) => g.lvl >= lv.start);
@@ -5092,6 +5364,9 @@ const XlsxLite = (() => {
       html += groups[lvl].map((t) => `<option value="${t.id}"${t.id === selected ? " selected" : ""}>${esc(AR(t.name))}</option>`).join("");
       html += "</optgroup>";
     }
+    const parts = partsOf(state.text);
+    if (parts.length)
+      html += `<optgroup label="قبل صفحة البدء">${parts.map((t) => `<option value="${t.id}"${t.id === selected ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</optgroup>`;
     html += `<optgroup label="متن الخطة"><option value="self"${selected === "self" ? " selected" : ""}>المتن نفسه (ما حُفظ منه)</option></optgroup>`;
     return html;
   }
@@ -5500,19 +5775,22 @@ const XlsxLite = (() => {
       btn.disabled = false;
     }
   }
+  // ملف وورد للخطة الحالية (للتنزيل، أو للنقل إلى الخطط الجاهزة)
+  function docxBlob() {
+    const rows = currentRows();
+    return DocxBuilder.build({
+      templateB64: TEMPLATE_DOCX,
+      title: currentTitle(),
+      rows,
+      sheets: sheetInfo(rows),
+      halaqa: state.halaqa.enabled ? state.halaqa.name : "",
+      student: studentName(),
+      duration: durationText(),
+    });
+  }
   function exportDocx(btn = $("export"), st = $("status")) {
     return withBusy(btn, "جارٍ إعداد ملف وورد…", async () => {
-      const rows = currentRows();
-      const blob = await DocxBuilder.build({
-        templateB64: TEMPLATE_DOCX,
-        title: currentTitle(),
-        rows,
-        sheets: sheetInfo(rows),
-        halaqa: state.halaqa.enabled ? state.halaqa.name : "",
-        student: studentName(),
-        duration: durationText(),
-      });
-      await offerFile(blob, baseFilename() + ".docx", st);
+      await offerFile(await docxBlob(), baseFilename() + ".docx", st);
     }, st);
   }
   // ملف PDF بمقاسات ملف وورد نفسه (صفحة لكل ٢٢ يوماً)
@@ -5540,11 +5818,13 @@ const XlsxLite = (() => {
       producer: "الخطط العلميّة – برنامج تأهيل",
     });
   }
+  function pdfBlob() {
+    const rows = currentRows();
+    return buildPdf(rows, sheetInfo(rows));
+  }
   function exportPdf(btn = $("exportPdf"), st = $("status")) {
     return withBusy(btn, "جارٍ إعداد ملف PDF…", async () => {
-      const rows = currentRows();
-      const blob = await buildPdf(rows, sheetInfo(rows));
-      await offerFile(blob, baseFilename() + ".pdf", st);
+      await offerFile(await pdfBlob(), baseFilename() + ".pdf", st);
     }, st);
   }
   function exportXlsx() {
@@ -6174,7 +6454,12 @@ const XlsxLite = (() => {
     // في الموقع: المشرفون لصاحب الموقع وحده، والنسخة الاحتياطية لكل مشرف
     $("adminPeople").hidden = !(SITE_MODE && owner && lib.main);
     $("adminBackup").hidden = !(SITE_MODE && owner);
+    $("adminFiles").hidden = !(SITE_MODE && owner);
     if (SITE_MODE && owner && lib.main) watchAdmins();
+    if (SITE_MODE && owner) {
+      watchExtra();
+      renderFilesAdmin();
+    }
     if (!owner || !NAME_DEFAULTS) return;
     const d = NAME_DEFAULTS;
     const n = effectiveNames(nameOverrides);
@@ -6425,6 +6710,24 @@ const XlsxLite = (() => {
       e.target.value = "";
     });
     $("backupConfirm").addEventListener("click", restoreBackup);
+    // الخطط الجاهزة والمتون
+    $("filesAdmin").addEventListener("click", (e) => {
+      const h = e.target.closest("[data-hide]");
+      if (h) return toggleHidden(h.dataset.hide);
+      const ed = e.target.closest("[data-edit]");
+      if (ed) return startFilesEdit(ed.dataset.edit);
+      const rm = e.target.closest("[data-remove]");
+      if (rm) return removeExtra(rm.dataset.remove);
+    });
+    $("filesKind").addEventListener("change", syncFilesForm);
+    $("filesForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveFilesForm();
+    });
+    $("fCancel").addEventListener("click", () => {
+      resetFilesForm();
+      setStatus($("filesStatus"), "", "");
+    });
     $("adminFields").addEventListener("input", () => {
       adminDirty = true;
       setStatus($("adminStatus"), "", "");
@@ -6508,6 +6811,7 @@ const XlsxLite = (() => {
     fillFilter($("libTeacher"), "كل المعلمين", tea.map((h) => [h || NONE, h || "دون معلم"]));
   }
   function renderLibrary() {
+    if (SITE_MODE && lib.owner) watchExtra();
     const list = $("libList");
     const note = $("libNote");
     const n = lib.status === "ready" ? lib.plans.length : 0;
@@ -6571,6 +6875,7 @@ const XlsxLite = (() => {
               <button type="button" class="link-btn" data-word="${pid}">تنزيل وورد</button>
               <button type="button" class="link-btn" data-pdf="${pid}">تنزيل PDF</button>
               ${SITE_MODE ? `<a class="link-btn wa-link" href="${esc(waHref(p))}" target="_blank" rel="noopener">إرسال بالواتساب</a>` : ""}
+              ${SITE_MODE && lib.owner ? (promotedFrom(p.id) ? `<span class="hint">في «${esc(tabName("ready"))}»</span>` : `<button type="button" class="link-btn${armedPromote[p.id] ? " is-armed" : ""}" data-promote="${pid}">${armedPromote[p.id] ? "تأكيد النقل" : "إلى " + esc(tabName("ready"))}</button>`) : ""}
               ${canDelete(p) ? `<button type="button" class="danger-btn${armed[p.id] ? " is-armed" : ""}" data-del="${pid}">${armed[p.id] ? "تأكيد الحذف" : "حذف"}</button>` : ""}
             </div>
           </li>`;
@@ -6592,7 +6897,10 @@ const XlsxLite = (() => {
       if (a.dataset.view === name) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
-    if (name === "ready" || name === "texts") renderFiles(name);
+    if (name === "ready" || name === "texts") {
+      watchExtra();
+      renderFiles(name);
+    }
   }
   const route = () => {
     const h = decodeURIComponent(location.hash.slice(1));
@@ -6620,14 +6928,19 @@ const XlsxLite = (() => {
     const box = $(kind + "List");
     if (box.dataset.done) return;
     box.dataset.done = "1";
-    const list = (typeof LIBRARY !== "undefined" && LIBRARY[kind]) || [];
+    const hidden = new Set(extra.hidden);
+    const list = ((typeof LIBRARY !== "undefined" && LIBRARY[kind]) || [])
+      .filter((e) => !hidden.has(hideKey(kind, e)))
+      .concat(extra.entries.filter((e) => e.kind === kind));
     if (!list.length) {
       box.innerHTML = `<p class="empty">${EMPTY_FILES[kind]}</p>`;
       return;
     }
     const groups = {};
-    list.forEach((e) => (groups[e.level || 0] = groups[e.level || 0] || []).push(e));
+    list.forEach((e) => (groups[+e.level || 0] = groups[+e.level || 0] || []).push(e));
+    // المستويات بالترتيب، و«أخرى» آخراً
     box.innerHTML = Object.keys(groups)
+      .sort((a, b) => (+a || 99) - (+b || 99))
       .map(
         (lvl) => `
       <section class="file-group">
@@ -6638,7 +6951,11 @@ const XlsxLite = (() => {
           <li class="lib-item">
             <div class="lib-main"><b>${esc(AR(e.title))}</b>${e.note ? `<span class="hint">${esc(AR(e.note))}</span>` : ""}</div>
             <div class="file-actions">${
-              e.gen
+              e.id
+                ? e.files
+                    .map((f, i) => `<button type="button" class="secondary file-btn" data-blob="${esc(e.id)}|${i}">${KIND_LABEL[f.kind] || esc(f.kind)} <span>${sizeText(+f.size || 0)}</span></button>`)
+                    .join("")
+                : e.gen
                 ? ["docx", "pdf"]
                     .map((k) => `<button type="button" class="secondary file-btn" data-gen="${esc(e.gen.text)}" data-days="${+e.gen.days || 0}" data-kind="${k}">${KIND_LABEL[k]}</button>`)
                     .join("")
@@ -6714,6 +7031,317 @@ const XlsxLite = (() => {
     }, st);
   }
 
+  /* ---------- ما يضيفه المشرفون إلى «الخطط الجاهزة» و«المتون PDF» (الموقع) ----------
+     تخزين الملفات في Firebase (Storage) يحتاج الخطة المدفوعة، فيُحفظ كل ملف في Firestore أجزاءً:
+     blobs/{رقم}-{ترتيب} فيها نص base64 لا يزيد على BLOB_CHUNK حرف (المستند ١ م.ب على الأكثر)، وبياناته في library/{رقم}.
+     وما في الصفحة أصلاً (LIBRARY) لا يُحذف بل يُخفى، بقائمة في config/library. */
+  const LIBRARY_DOC = "config/library";
+  const BLOB_CHUNK = 900000;
+  const MAX_FILE = 15 * 1048576;
+  const MIME = { docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", pdf: "application/pdf" };
+  const extra = { status: "idle", entries: [], hidden: [] };
+  let extraWatching = false;
+  let filesEdit = null;
+  const armedFiles = {};
+  const armedPromote = {};
+  const hideKey = (kind, e) => kind + ":" + entryKey(e);
+  const tabName = (kind) => document.querySelector(`[data-tab="${kind}"]`).textContent.trim();
+  const daysNote = (n) => pick(n, { one: "يوم واحد", two: "يومان", pl: `${n} أيام`, acc: `${n} يوماً`, gen: `${n} يوم` });
+  const validExtra = (e) => !!e && (e.kind === "ready" || e.kind === "texts") && typeof e.title === "string" && Array.isArray(e.files);
+  const promotedFrom = (id) => extra.entries.find((e) => e.from === id);
+  function watchExtra() {
+    if (!SITE_MODE || extraWatching) return;
+    extraWatching = true;
+    extra.status = "loading";
+    cloudReady.then(
+      (c) => {
+        c.db.collection("library").onSnapshot(
+          (snap) => {
+            extra.entries = snap.docs
+              .map((d) => Object.assign({}, d.data(), { id: d.id }))
+              .filter(validExtra)
+              .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+            extra.status = "ready";
+            extraChanged();
+          },
+          () => {
+            extra.status = "error";
+            extraChanged();
+          }
+        );
+        c.db.doc(LIBRARY_DOC).onSnapshot(
+          (snap) => {
+            const d = (snap.exists && snap.data()) || {};
+            extra.hidden = Array.isArray(d.hidden) ? d.hidden.filter((x) => typeof x === "string") : [];
+            extraChanged();
+          },
+          () => {}
+        );
+      },
+      () => {
+        extra.status = "error";
+        extraChanged();
+      }
+    );
+  }
+  function extraChanged() {
+    for (const kind of ["ready", "texts"]) {
+      delete $(kind + "List").dataset.done;
+      if (!$("view-" + kind).hidden) renderFiles(kind);
+    }
+    if (!$("view-admin").hidden && lib.owner) renderFilesAdmin();
+    if (!$("view-saved").hidden) renderLibrary();
+  }
+  const filesError = (err) =>
+    err && err.code === "invalid_argument"
+      ? "لم يُحفظ: قواعد Firebase لا تسمح بعد بهذا، أو انتهى دخولك. انشر القواعد الجديدة في Firebase ثم أعد المحاولة."
+      : err && err.code === "quota_exceeded"
+        ? "لم يُحفظ: بلغت قاعدة البيانات حدّها اليومي؛ أعد المحاولة غداً."
+        : "لم يُحفظ: " + (err && err.message ? err.message : "خطأ غير معروف");
+  function b64Bytes(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function fileB64(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ""));
+      r.onerror = () => reject(new Error("تعذّرت قراءة الملف"));
+      r.readAsDataURL(blob);
+    });
+  }
+  const randomId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, "0")).join("");
+  async function storeBlob(blob, kind, name) {
+    const b64 = await fileB64(blob);
+    const id = randomId();
+    const items = [];
+    for (let i = 0, k = 0; i < b64.length; i += BLOB_CHUNK, k++) items.push({ id: `${id}-${k}`, data: { data: b64.slice(i, i + BLOB_CHUNK), i: k } });
+    await lib.db.collection("blobs").setMany(items);
+    return { kind, name, size: blob.size, blob: id, parts: items.length };
+  }
+  const blobIds = (files) => files.flatMap((f) => Array.from({ length: Math.max(1, +f.parts || 1) }, (_, i) => `${f.blob}-${i}`));
+  async function dropBlobs(files) {
+    if (files.length) await lib.db.collection("blobs").deleteMany(blobIds(files)).catch(() => {});
+  }
+  async function blobOf(f) {
+    const snaps = await Promise.all(blobIds([f]).map((id) => lib.db.collection("blobs").doc(id).get()));
+    if (snaps.some((sn) => !sn.exists)) throw new Error("الملف غير موجود");
+    return new Blob([b64Bytes(snaps.map((sn) => sn.data().data).join(""))], { type: MIME[f.kind] || "application/octet-stream" });
+  }
+  function downloadBlob(btn, st) {
+    return withBusy(btn, "جارٍ تجهيز الملف…", async () => {
+      const [id, i] = btn.dataset.blob.split("|");
+      const e = extra.entries.find((x) => x.id === id);
+      const f = e && e.files[+i];
+      if (!f) throw new Error("الملف غير موجود");
+      await cloudReady;
+      await offerFile(await blobOf(f), f.name, st);
+    }, st);
+  }
+  // لوحة التحكم: القائمتان، ونموذج الإضافة والتعديل
+  function fillFilesLevel() {
+    const sel = $("fLevel");
+    const cur = sel.value;
+    sel.innerHTML =
+      [1, 2, 3, 4, 5, 6, 7].filter((l) => LEVEL_NAMES[l]).map((l) => `<option value="${l}">${esc(LEVEL_NAMES[l])}</option>`).join("") + `<option value="0">أخرى</option>`;
+    if (cur) sel.value = cur;
+  }
+  function syncFilesForm() {
+    const editing = filesEdit ? extra.entries.find((e) => e.id === filesEdit) : null;
+    const kind = editing ? editing.kind : document.querySelector('input[name="fkind"]:checked').value;
+    $("fDocxRow").hidden = kind !== "ready";
+    $("fNoteRow").hidden = kind !== "ready";
+    $("filesKind").hidden = !!editing;
+    $("filesForm").classList.toggle("is-editing", !!editing);
+    $("filesFormTitle").textContent = editing ? `تعديل «${AR(editing.title)}»` : "إضافة ملف";
+    $("fSave").textContent = editing ? "حفظ التعديل" : "إضافة";
+    $("fCancel").hidden = !editing;
+    $("filesFormHint").textContent = editing
+      ? "اختر ملفاً جديداً لتستبدل به الموجود، أو اتركه فيبقى كما هو."
+      : kind === "ready"
+        ? `يظهر في «${tabName("ready")}»: ملف وورد أو PDF أو كلاهما.`
+        : `يظهر في «${tabName("texts")}»: ملف PDF للمتن.`;
+  }
+  function renderFilesAdmin() {
+    fillFilesLevel();
+    syncFilesForm();
+    const box = $("filesAdmin");
+    if (extra.status === "idle" || extra.status === "loading") {
+      box.innerHTML = `<p class="hint">جارٍ تحميل القائمة…</p>`;
+      return;
+    }
+    const hidden = new Set(extra.hidden);
+    const lvl = (e) => LEVEL_NAMES[+e.level] || "أخرى";
+    const group = (kind) => {
+      const base = ((typeof LIBRARY !== "undefined" && LIBRARY[kind]) || []).map((e) => {
+        const key = hideKey(kind, e);
+        const off = hidden.has(key);
+        const meta = [lvl(e), e.note ? AR(e.note) : "", off ? "مخفية عن الزوار" : "من ملفات الصفحة"].filter(Boolean).join("، ");
+        return `<li class="lib-item${off ? " is-hidden" : ""}"><div class="lib-main"><b>${esc(AR(e.title))}</b><span class="hint">${esc(meta)}</span></div>
+          <div class="lib-actions"><button type="button" class="link-btn" data-hide="${esc(key)}">${off ? "إظهار" : "إخفاء"}</button></div></li>`;
+      });
+      const added = extra.entries
+        .filter((e) => e.kind === kind)
+        .map((e) => {
+          const kinds = e.files.map((f) => KIND_LABEL[f.kind] || f.kind).join(" و");
+          const meta = [lvl(e), e.note ? AR(e.note) : "", kinds, e.from ? "منقولة من الخطط المحفوظة" : "مضافة"].filter(Boolean).join("، ");
+          return `<li class="lib-item${filesEdit === e.id ? " is-open" : ""}"><div class="lib-main"><b>${esc(AR(e.title))}</b><span class="hint">${esc(meta)}</span></div>
+          <div class="lib-actions"><button type="button" class="link-btn" data-edit="${esc(e.id)}">تعديل</button><button type="button" class="danger-btn${armedFiles[e.id] ? " is-armed" : ""}" data-remove="${esc(e.id)}">${armedFiles[e.id] ? "تأكيد الحذف" : "حذف"}</button></div></li>`;
+        });
+      const items = base.concat(added).join("") || `<li class="lib-item lib-none">لا شيء بعد.</li>`;
+      return `<div class="files-admin-group"><h3 class="admin-level">${esc(tabName(kind))}</h3><ul class="lib-list">${items}</ul></div>`;
+    };
+    box.innerHTML =
+      (extra.status === "error" ? `<p class="status" data-kind="error">تعذّر تحميل ما أُضيف؛ تظهر هنا ملفات الصفحة وحدها.</p>` : "") + group("ready") + group("texts");
+  }
+  function resetFilesForm() {
+    filesEdit = null;
+    for (const id of ["fTitle", "fNote", "fDocx", "fPdf"]) $(id).value = "";
+    renderFilesAdmin();
+  }
+  function startFilesEdit(id) {
+    const e = extra.entries.find((x) => x.id === id);
+    if (!e) return;
+    filesEdit = id;
+    renderFilesAdmin();
+    $("fTitle").value = e.title;
+    $("fNote").value = e.note || "";
+    $("fLevel").value = String(+e.level || 0);
+    $("fDocx").value = "";
+    $("fPdf").value = "";
+    setStatus($("filesStatus"), "", "");
+    $("filesForm").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    $("fTitle").focus();
+  }
+  async function saveFilesForm() {
+    const st = $("filesStatus");
+    const editing = filesEdit ? extra.entries.find((e) => e.id === filesEdit) : null;
+    const kind = editing ? editing.kind : document.querySelector('input[name="fkind"]:checked').value;
+    const title = cleanName($("fTitle").value);
+    const note = kind === "ready" ? cleanName($("fNote").value) : "";
+    const level = clampInt($("fLevel").value, 0, 7, 0);
+    const docx = kind === "ready" ? $("fDocx").files[0] : null;
+    const pdf = $("fPdf").files[0];
+    if (!title) return setStatus(st, "اكتب العنوان.", "error");
+    if (docx && !/\.docx$/i.test(docx.name)) return setStatus(st, "ملف وورد يكون بصيغة docx.", "error");
+    if (pdf && !/\.pdf$/i.test(pdf.name)) return setStatus(st, "ملف PDF يكون بصيغة pdf.", "error");
+    if ([docx, pdf].some((f) => f && f.size > MAX_FILE)) return setStatus(st, "الملف أكبر من ١٥ م.ب.", "error");
+    if (!editing && !docx && !pdf) return setStatus(st, kind === "ready" ? "اختر ملف وورد أو PDF." : "اختر ملف PDF.", "error");
+    const btn = $("fSave");
+    btn.disabled = true;
+    setStatus(st, docx || pdf ? "جارٍ رفع الملفات…" : "جارٍ الحفظ…", "busy");
+    const fresh = [];
+    try {
+      await cloudReady;
+      const files = editing ? editing.files.slice() : [];
+      const old = [];
+      for (const [k, f] of [["docx", docx], ["pdf", pdf]]) {
+        if (!f) continue;
+        const stored = await storeBlob(f, k, f.name);
+        fresh.push(stored);
+        const at = files.findIndex((x) => x.kind === k);
+        if (at >= 0) old.push(files.splice(at, 1, stored)[0]);
+        else files.push(stored);
+      }
+      files.sort((a, b) => (a.kind === "docx" ? 0 : 1) - (b.kind === "docx" ? 0 : 1));
+      const now = new Date().toISOString();
+      const data = { kind, title, note, level, files, by: (lib.user && lib.user.uid) || "", createdAt: (editing && editing.createdAt) || now, updatedAt: now };
+      if (editing && editing.from) data.from = editing.from;
+      await lib.db.collection("library").doc(editing ? editing.id : undefined).set(data);
+      await dropBlobs(old);
+      resetFilesForm();
+      setStatus(st, editing ? `حُفظ تعديل «${AR(title)}».` : `أُضيفت «${AR(title)}» إلى «${tabName(kind)}».`, "ok");
+    } catch (err) {
+      await dropBlobs(fresh);
+      setStatus(st, filesError(err), "error");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  async function removeExtra(id) {
+    const st = $("filesStatus");
+    if (!armedFiles[id]) {
+      armedFiles[id] = setTimeout(() => {
+        delete armedFiles[id];
+        renderFilesAdmin();
+      }, 4000);
+      renderFilesAdmin();
+      return;
+    }
+    clearTimeout(armedFiles[id]);
+    delete armedFiles[id];
+    const e = extra.entries.find((x) => x.id === id);
+    if (!e) return;
+    setStatus(st, "جارٍ الحذف…", "busy");
+    try {
+      await lib.db.collection("library").doc(id).delete();
+      await dropBlobs(e.files);
+      if (filesEdit === id) resetFilesForm();
+      setStatus(st, `حُذفت «${AR(e.title)}».`, "ok");
+    } catch (err) {
+      setStatus(st, filesError(err), "error");
+    }
+  }
+  async function toggleHidden(key) {
+    const st = $("filesStatus");
+    const set = new Set(extra.hidden);
+    const off = set.has(key);
+    if (off) set.delete(key);
+    else set.add(key);
+    try {
+      await lib.db.doc(LIBRARY_DOC).set({ hidden: [...set], savedAt: new Date().toISOString() });
+      setStatus(st, off ? "ظهرت للزوار من جديد." : "أُخفيت عن الزوار، وتستطيع إظهارها متى شئت.", "ok");
+    } catch (err) {
+      setStatus(st, filesError(err), "error");
+    }
+  }
+  // خطة محفوظة إلى «الخطط الجاهزة»: يُبنى ملفا وورد وPDF منها في متصفح المشرف، ويُحفظان كبقية الملفات المضافة
+  async function promotePlan(id) {
+    const st = $("libStatus");
+    const p = lib.plans.find((x) => x.id === id);
+    if (!p) return;
+    if (!armedPromote[id]) {
+      armedPromote[id] = setTimeout(() => {
+        delete armedPromote[id];
+        renderLibrary();
+      }, 4000);
+      renderLibrary();
+      return;
+    }
+    clearTimeout(armedPromote[id]);
+    delete armedPromote[id];
+    if (!openPlan(p)) {
+      setStatus(st, "متن هذه الخطة غير موجود في الصفحة.", "error");
+      return;
+    }
+    setStatus(st, "جارٍ إعداد ملفي وورد وPDF ورفعهما…", "busy");
+    const stored = [];
+    try {
+      await cloudReady;
+      const base = baseFilename();
+      stored.push(await storeBlob(await docxBlob(), "docx", base + ".docx"));
+      stored.push(await storeBlob(await pdfBlob(), "pdf", base + ".pdf"));
+      const now = new Date().toISOString();
+      await lib.db.collection("library").doc().set({
+        kind: "ready",
+        title: cleanName(p.name) || AR(state.text.name),
+        note: daysNote(state.plan.D),
+        level: levelOf(state.text),
+        files: stored,
+        from: p.id,
+        by: (lib.user && lib.user.uid) || "",
+        createdAt: now,
+        updatedAt: now,
+      });
+      setStatus(st, `أُضيفت «${AR(p.name)}» إلى «${tabName("ready")}» بصيغتي وورد وPDF، وتعدّلها أو تحذفها من لوحة التحكم.`, "ok");
+    } catch (err) {
+      await dropBlobs(stored);
+      setStatus(st, filesError(err), "error");
+    }
+  }
+
   /* ---------- ربط العناصر ---------- */
   function bind() {
     $("level").addEventListener("change", (e) => {
@@ -6733,23 +7361,52 @@ const XlsxLite = (() => {
       selectText(e.target.value, prefs.days && prefs.days[e.target.value]);
       renderLibrary();
     });
-    // علامة صح على متن: الخطة من المتون المعلَّمة (ومتن واحد على الأقل)
+    // علامة صح على متن: الخطة من المتون المعلَّمة (ومتن واحد على الأقل)، ومتون بعدها من مستويات أخرى، وصفحة البدء
     $("textChecks").addEventListener("change", (e) => {
       const el = e.target;
+      const lvl = +$("level").value;
+      const c = composition(lvl);
       if (el.id === "l1Edition") return setLevel1({ edition: el.value });
+      if (el.id === "appendText") return el.value && recompose(c.ids.concat([el.value]), c.from);
+      if (el.id === "startOn") {
+        if (!el.checked) return c.from && recompose(c.ids, 0);
+        $("startPage").hidden = false;
+        $("startHint").hidden = false;
+        $("startPage").focus();
+        return;
+      }
+      if (el.id === "startPage") {
+        const t = getText(c.ids[0]);
+        const span = pageSpan(t);
+        const n = parseIntAny(el.value);
+        if (!(n > span.a && n <= span.b)) {
+          setStatus($("startHint"), `اكتب صفحة من ${AR(span.a + 1)} إلى ${AR(span.b)}.`, "error");
+          return;
+        }
+        return n !== c.from && recompose(c.ids, n);
+      }
       if (!el.matches("input[type=checkbox][data-id]")) return;
-      const ids = [...$("textChecks").querySelectorAll("input[data-id]:checked")].map((c) => c.dataset.id);
-      if (!ids.length) {
+      const inLevel = levelTexts(lvl).map((t) => t.id);
+      const checked = inLevel.filter((id) => $("textChecks").querySelector(`input[data-id="${id}"]`).checked);
+      if (!checked.length) {
         el.checked = true;
         setStatus($("textChecksNote"), "علّم متناً واحداً على الأقل.", "error");
         return;
       }
-      // تغيّرت متون الخطة: تبدأ بأيامها الأصلية
-      const id = selectionId(+$("level").value, ids);
-      state.loaded = null;
-      state.approved = null;
-      selectText(id);
-      renderLibrary();
+      // صفحة البدء لأول متن في الخطة؛ فإن تغيّر أولها بدأت من أول المتن الجديد
+      recompose(checked.concat(c.ids.filter((id) => !inLevel.includes(id))), checked[0] === c.ids[0] ? c.from : 0);
+    });
+    $("textChecks").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-unappend]");
+      if (!b) return;
+      const c = composition(+$("level").value);
+      recompose(c.ids.filter((id) => id !== b.dataset.unappend), c.from);
+    });
+    $("textChecks").addEventListener("keydown", (e) => {
+      if (e.target.id === "startPage" && e.key === "Enter") {
+        e.preventDefault();
+        e.target.dispatchEvent(new Event("change", { bubbles: true }));
+      }
     });
     $("days").addEventListener("input", (e) => {
       const n = parseIntAny(e.target.value);
@@ -7088,6 +7745,8 @@ const XlsxLite = (() => {
       const pdfBtn = e.target.closest("[data-pdf]");
       const delBtn = e.target.closest("[data-del]");
       if (delBtn) return deletePlan(delBtn.dataset.del, delBtn);
+      const promoteBtn = e.target.closest("[data-promote]");
+      if (promoteBtn) return promotePlan(promoteBtn.dataset.promote);
       const btn = openBtn || wordBtn || pdfBtn;
       if (!btn) return;
       const p = lib.plans.find((x) => x.id === (btn.dataset.open || btn.dataset.word || btn.dataset.pdf));
@@ -7109,6 +7768,8 @@ const XlsxLite = (() => {
       $(kind + "List").addEventListener("click", (e) => {
         const g = e.target.closest("[data-gen]");
         if (g) return downloadReady(g, $(kind + "Status"));
+        const bl = e.target.closest("[data-blob]");
+        if (bl) return downloadBlob(bl, $(kind + "Status"));
         const b = e.target.closest("[data-path]");
         if (b) downloadStatic(b, $(kind + "Status"));
       });
