@@ -5090,8 +5090,9 @@ const XlsxLite = (() => {
 
   function selectText(id, days, preset = {}) {
     const t = getText(id) || getText("level-1");
-    // طبعة المختصر المختارة هي طبعة المستوى الأول في القائمة وفي المراجعة
-    if (isMukhtasar(t) && !t.isLevel) state.level1.edition = baseOf(t);
+    // طبعة المختصر في الخطة هي طبعة المستوى الأول في القائمة وفي المراجعة
+    const mk = t.custom || t.id === "level-1" ? null : checkedIds(t).find((x) => MUKHTASAR_EDITIONS.includes(x));
+    if (mk) state.level1.edition = mk;
     state.text = t;
     state.maxDays = pagesOf(t.id);
     state.days = clampDays(days || t.days.length);
@@ -5212,7 +5213,7 @@ const XlsxLite = (() => {
     sel.hidden = !can || !state.link.cont;
     $("linkPrevNote").hidden = sel.hidden;
     if (!can) return;
-    const own = new Set(state.text.isLevel ? state.text.parts : [state.text.id]);
+    const own = new Set(ownIds(state.text));
     const cur = prevText();
     const groups = {};
     allTexts().forEach((t) => {
@@ -5260,11 +5261,12 @@ const XlsxLite = (() => {
   function validReview(r) {
     if (!r || !Array.isArray(r.items)) return null;
     const excl = excludedIds();
+    const own = new Set(state.text.isLevel ? [] : ownIds(state.text));
     const items = r.items
       .filter(
         (it) =>
           it &&
-          (it.source === "self" || (getText(it.source) && it.source !== state.text.id && !excl.has(it.source))) &&
+          (it.source === "self" || (getText(it.source) && it.source !== state.text.id && !own.has(it.source) && !excl.has(it.source))) &&
           (it.mode === "pages" || it.mode === "days")
       )
       .slice(0, MAX_REVIEW)
@@ -5402,8 +5404,9 @@ const XlsxLite = (() => {
     let html = "";
     const groups = {};
     const excl = excludedIds();
+    const own = new Set(ownIds(state.text));
     allTexts().forEach((t) => {
-      if (t.id !== state.text.id && !excl.has(t.id)) (groups[t.level] = groups[t.level] || []).push(t);
+      if (t.id !== state.text.id && !own.has(t.id) && !excl.has(t.id)) (groups[t.level] = groups[t.level] || []).push(t);
     });
     for (const lvl of Object.keys(groups)) {
       html += `<optgroup label="${LEVEL_NAMES[lvl] || "خطط مرفوعة"}">`;
@@ -6443,7 +6446,7 @@ const XlsxLite = (() => {
     fillLevelSelect();
     if (state.text && state.plan) {
       for (const k of Object.keys(selCache)) delete selCache[k];
-      if (state.text.id === "level-1" || state.text.isSel) state.text = getText(state.text.id);
+      if (state.text.id === "level-1" || state.text.isSel || /^(mix|part):/.test(state.text.id)) state.text = getText(state.text.id);
       fillTextSelect(levelOf(state.text));
       if (oldTitle !== null && state.title === oldTitle) {
         state.title = AR(state.text.title);
@@ -7700,7 +7703,9 @@ const XlsxLite = (() => {
     function setLevel1(patch) {
       Object.assign(state.level1, patch);
       const t = state.text;
+      const swap = patch.edition && /^mix:/.test(t.id) ? t.id.replace(/(^mix:|[;~])(mukhtasar\d+)(?=$|[;@])/, `$1${patch.edition}`) : null;
       if (t.id === "level-1") selectText("level-1", undefined, { keepLink: true, review: state.review, title: state.title });
+      else if (swap && swap !== t.id && getText(swap)) selectText(swap, undefined, { keepLink: true, review: state.review });
       else if (patch.edition && isMukhtasar(t)) selectText(patch.edition, undefined, { keepLink: true, review: state.review });
       else {
         if (levelOf(t) === 1) fillTextSelect(1);
