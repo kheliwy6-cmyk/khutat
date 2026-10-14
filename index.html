@@ -546,6 +546,17 @@ input.mini {
   cursor: pointer;
   font-size: 0.95rem;
 }
+.tstart select {
+  width: auto;
+  max-width: 100%;
+  padding: 3px 8px;
+  font-size: 0.92rem;
+}
+.tstart select[hidden],
+.tstart input[hidden],
+.tstart .hint[hidden] {
+  display: none;
+}
 .tstart .hint {
   flex-basis: 100%;
   padding: 0;
@@ -4790,18 +4801,24 @@ const XlsxLite = (() => {
     if (selCache[id]) return selCache[id];
     const m = /^mix:(.+)$/.exec(id || "");
     if (!m) return null;
-    const segs = m[1].split(";").map((x) => {
-      const [tid, from] = x.split("@");
-      return { t: TEXTS.find((t) => t.id === tid), from: +from || 0 };
+    // «~id» متن محفوظ قبل متن البدء (يُراجَع ولا يُحفظ في الخطة)، ولا يكون إلا في أولها
+    const all = m[1].split(";").map((x) => {
+      const done = x.startsWith("~");
+      const [tid, from] = x.replace(/^~/, "").split("@");
+      return { t: TEXTS.find((t) => t.id === tid), from: done ? 0 : +from || 0, done };
     });
-    if (!segs.length || segs.some((x) => !x.t) || new Set(segs.map((x) => x.t.id)).size !== segs.length) return null;
+    if (!all.length || all.some((x) => !x.t) || new Set(all.map((x) => x.t.id)).size !== all.length) return null;
+    const done = all.filter((x) => x.done).map((x) => x.t.id);
+    const segs = all.filter((x) => !x.done);
+    if (!segs.length || all.slice(0, done.length).some((x) => !x.done)) return null;
     for (const x of segs) {
       const span = pageSpan(x.t);
       if (x.from && (x.from <= span.a || x.from > span.b)) x.from = 0;
       x.days = x.from ? daysFrom(x.t.days, x.from) : x.t.days;
     }
-    if (segs.length === 1 && !segs[0].from) return segs[0].t;
-    const L = segs[0].t.level;
+    if (segs.length === 1 && !segs[0].from && !done.length) return segs[0].t;
+    // مستوى الخطة مستوى أول متونها في القائمة (ولو كان محفوظاً قبل البدء)
+    const L = all[0].t.level;
     const at = (x) => (x.from ? ` من صفحة ${AR(x.from)}` : "");
     let t;
     if (segs.length === 1) {
@@ -4824,6 +4841,7 @@ const XlsxLite = (() => {
       };
     }
     t.segs = segs.map((x) => ({ id: x.t.id, from: x.from }));
+    t.done = done;
     return (selCache[id] = t);
   }
   // ما حُفظ من متن قبل صفحة البدء: «part:الطحاوية@150»
@@ -4842,11 +4860,13 @@ const XlsxLite = (() => {
       ? level1Plan()
       : allTexts().find((t) => t.id === id) || LEVEL_PLANS.find((t) => t.id === id) || selectionPlan(id) || mixPlan(id) || partText(id);
   // رقم الخطة من متونها: كلها من المستوى وتبدأ من أولها ← رقم المستوى أو المتن أو بعض متونه كما كان؛ وإلا «mix:»
-  function compositionId(lvl, ids, from) {
+  // start: متن البدء (وما قبله في القائمة محفوظ)، from: صفحة البدء فيه
+  function compositionId(lvl, ids, start, from) {
+    const k = Math.max(0, ids.indexOf(start));
     const inLevel = levelTexts(lvl).map((t) => t.id);
-    if (!from && ids.every((id) => inLevel.includes(id))) return selectionId(lvl, ids);
-    if (!from && ids.length === 1) return ids[0];
-    return "mix:" + ids.map((id, i) => (i === 0 && from ? `${id}@${from}` : id)).join(";");
+    if (!k && !from && ids.every((id) => inLevel.includes(id))) return selectionId(lvl, ids);
+    if (!k && !from && ids.length === 1) return ids[0];
+    return "mix:" + ids.map((id, i) => (i < k ? "~" + id : i === k && from ? `${id}@${from}` : id)).join(";");
   }
   // متون المستوى في قائمة «المتون» بترتيب البرنامج (المستوى الأول: المختصر بطبعته ثم الأذكار والآداب)
   const levelTexts = (lvl) => (lvl === 1 ? [state.level1.edition, "adhkar"].map(getText) : TEXTS.filter((t) => t.level === lvl));
@@ -4876,9 +4896,11 @@ const XlsxLite = (() => {
   }
   // متون المستوى غير المعلَّمة: لا تدخل في الخطة ولا في المراجعة ولا يُتابَع منها الربط.
   // (والخطة الجاهزة لمتن واحد على ترتيب البرنامج: ما قبله من مستواه محفوظ يُراجَع.)
+  // المعلَّم في القائمة: ما في الخطة، وما حُفظ منها قبل متن البدء
+  const checkedIds = (t = state.text) => (t.done || []).concat(ownIds(t));
   function excludedIds(t = state.text) {
     if (!t || t.custom || state.prevInLevel) return new Set();
-    const own = new Set(ownIds(t));
+    const own = new Set(checkedIds(t));
     return new Set(levelTexts(levelOf(t)).map((x) => x.id).filter((id) => !own.has(id)));
   }
   const levelOf = (t) => (t.custom ? 0 : t.level);
@@ -4944,8 +4966,10 @@ const XlsxLite = (() => {
     const own = new Set(c.ids);
     const inLevel = levelTexts(lvl);
     const levelIds = new Set(inLevel.map((t) => t.id));
-    const first = c.ids[0];
-    const daysOf = (t) => daysWord(t.id === first && c.from ? daysFrom(t.days, c.from).length : t.days.length);
+    const first = c.start;
+    const done = new Set(c.done);
+    // ما قبل متن البدء محفوظ، ومتن البدء بأيامه من صفحة البدء
+    const daysOf = (t) => (done.has(t.id) ? "محفوظ" : daysWord(t.id === first && c.from ? daysFrom(t.days, c.from).length : t.days.length));
     const rows = inLevel.map((t, i) => {
       const on = own.has(t.id);
       const ed = lvl === 1 && isMukhtasar(t);
@@ -4969,32 +4993,46 @@ const XlsxLite = (() => {
           .map((l) => `<optgroup label="${esc(LEVEL_NAMES[l] || "")}">${groups[l].map((t) => `<option value="${t.id}">${esc(AR(t.name))}</option>`).join("")}</optgroup>`)
           .join("")}</select></div>`
       : "";
-    // البدء من صفحة في أول متن من الخطة (والأصل المتن كاملاً)
-    const ft = first && getText(first);
-    const span = ft ? pageSpan(ft) : null;
-    const start = ft
-      ? `<div class="tstart"><input type="checkbox" id="startOn"${c.from ? " checked" : ""}><label for="startOn">البدء من صفحة معيّنة في «${esc(SHORT[ft.id] || AR(ft.name))}»</label>` +
-        `<input id="startPage" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="صفحة البدء" value="${c.from ? AR(c.from) : ""}"${c.from ? "" : " hidden"}>` +
-        `<span class="hint" id="startHint"${c.from ? "" : " hidden"}>من ${AR(span.a + 1)} إلى ${AR(span.b)}؛ وما قبلها محفوظ يُراجَع ويبدأ منه الربط.</span></div>`
+    // البدء من صفحة معيّنة في أي متن من الخطة (والأصل أول متونها كاملاً)؛ وما قبله في القائمة محفوظ
+    const on = startOpen || !!c.from || c.done.length > 0;
+    const range = first ? startRange(c, first) : null;
+    const start = first
+      ? `<div class="tstart"><input type="checkbox" id="startOn"${on ? " checked" : ""}><label for="startOn">البدء من صفحة معيّنة</label>` +
+        `<select id="startText" aria-label="متن البدء"${on ? "" : " hidden"}>${c.ids.map((id) => `<option value="${id}"${id === first ? " selected" : ""}>${esc(SHORT[id] || AR(getText(id).name))}</option>`).join("")}</select>` +
+        `<input id="startPage" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="صفحة البدء" placeholder="${AR(range.a)}" value="${c.from ? AR(c.from) : ""}"${on ? "" : " hidden"}>` +
+        `<span class="hint" id="startHint"${on ? "" : " hidden"}>الصفحة من ${AR(range.a)} إلى ${AR(range.b)}؛ وما قبلها محفوظ يُراجَع ويبدأ منه الربط.</span></div>`
       : "";
     box.innerHTML = rows.join("") + added.join("") + more + start + `<p class="hint" id="textChecksNote">ما لا تعلّمه لا يدخل في الخطة ولا في المراجعة.</p>`;
   }
   // متون الخطة الحالية بترتيبها، وصفحة بدء أولها (إن كانت الخطة من هذا المستوى)
   function composition(lvl) {
     const t = state.text;
-    if (!t || levelOf(t) !== lvl) return { ids: [], from: 0 };
+    if (!t || levelOf(t) !== lvl) return { ids: [], start: null, from: 0, done: [], fixed: null };
     const s0 = segsOf(t)[0];
-    return { ids: ownIds(t), from: s0 && s0.from ? s0.from : 0 };
+    const from = s0 && s0.from ? s0.from : 0;
+    const done = t.done || [];
+    const start = ownIds(t)[0];
+    // متن بدء اختاره المستخدم (بصفحة أو بمتون محفوظة قبله)؛ وإلا فالبدء من أول المتون المعلَّمة أياً كان
+    return { ids: checkedIds(t), start, from, done, fixed: from || done.length ? start : null };
   }
+  // نطاق صفحة البدء: في أول متن من القائمة بعد أول صفحة (وإلا فهو المتن كاملاً)، وفيما بعده من أوله
+  function startRange(c, id) {
+    const span = pageSpan(getText(id));
+    return { a: id === c.ids[0] ? span.a + 1 : span.a, b: span.b };
+  }
+  let startOpen = false;
   // خطة جديدة من متون مختارة: متون المستوى بترتيب البرنامج، ثم ما أُضيف بعدها بترتيب إضافته
-  function recompose(ids, from) {
+  function recompose(ids, start, from) {
     const lvl = +$("level").value;
     const inLevel = levelTexts(lvl).map((t) => t.id);
     const all = inLevel.filter((id) => ids.includes(id)).concat(ids.filter((id) => !inLevel.includes(id)));
+    // متن البدء إن خرج من القائمة: تبدأ الخطة من أول متونها
+    const s = all.includes(start) ? start : all[0];
+    if (start && s !== start) startOpen = false;
     state.loaded = null;
     state.approved = null;
     // تغيّرت متون الخطة: تبدأ بأيامها الأصلية
-    selectText(compositionId(lvl, all, from));
+    selectText(compositionId(lvl, all, s, s === start ? from : 0));
     renderLibrary();
   }
 
@@ -5037,6 +5075,8 @@ const XlsxLite = (() => {
     if (!t || t.custom) return null;
     const s0 = segsOf(t)[0];
     if (s0 && s0.from) return getText(`part:${s0.id}@${s0.from}`);
+    // بدأت الخطة بمتن بعد متون محفوظة: يتابع الربط من آخرها
+    if (t.done && t.done.length) return getText(t.done[t.done.length - 1]);
     const first = t.isLevel ? getText(t.parts[0]) : getText(baseOf(t));
     if (!first || first.level <= 1) return null;
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
@@ -5265,7 +5305,9 @@ const XlsxLite = (() => {
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
     const upto =
       t.custom || t.level > 6 ? rest.length : t.isLevel || !state.prevInLevel ? rest.findIndex((x) => x.level === t.level) : rest.indexOf(t);
-    return (upto > 0 ? out.concat(rest.slice(0, upto)) : out).filter((x) => !own.has(x.id)).concat(partsOf(t));
+    return (upto > 0 ? out.concat(rest.slice(0, upto)) : out)
+      .filter((x) => !own.has(x.id) && !(t.done || []).includes(x.id))
+      .concat((t.done || []).map(getText), partsOf(t));
   }
   // المتن الذي يلي آخر متن في القائمة
   function nextReviewSource() {
@@ -5317,8 +5359,10 @@ const XlsxLite = (() => {
         lvl,
       });
     }
-    // ما حُفظ من متون الخطة قبل صفحة البدء
-    for (const pt of partsOf(t)) seq.push({ label: pt.name, ids: [pt.id], lvl: Math.min(pt.level, 6) });
+    // ما حُفظ قبل البدء: المتون التي قبل متن البدء، وما قبل صفحة البدء منه
+    const before = (t.done || []).filter((id) => !seq.some((g) => g.ids && g.ids.includes(id))).map(getText).concat(partsOf(t));
+    if (before.length)
+      seq.push({ label: "ما حُفظ قبل البدء", names: before.map((x) => AR(x.name)), ids: before.map((x) => x.id), lvl: Math.min(t.level, 6) });
     if (lv.self) seq.push({ label: t.isLevel ? (t.isMix ? "ما حُفظ من متون الخطة نفسها" : "ما حُفظ من متون المستوى نفسه") : "ما حُفظ من المتن نفسه", self: true, lvl: 7 });
     // البدء من مستوى معيّن: تبدأ الدورة منه، ثم تكمل وتعود إلى أولها
     if (lv.startOn && seq.length) {
@@ -7349,8 +7393,9 @@ const XlsxLite = (() => {
     $("level").addEventListener("change", (e) => {
       const lvl = +e.target.value;
       const prefs = loadPrefs();
-      // متون المستوى كلها معلَّمة في الأصل
+      // متون المستوى كلها معلَّمة في الأصل، والخطة من أول متونها
       const id = lvl === 0 ? customTexts[0] && customTexts[0].id : selectionId(lvl, levelTexts(lvl).map((t) => t.id));
+      startOpen = false;
       state.loaded = null;
       state.approved = null;
       selectText(id, prefs.days && prefs.days[id]);
@@ -7369,23 +7414,31 @@ const XlsxLite = (() => {
       const lvl = +$("level").value;
       const c = composition(lvl);
       if (el.id === "l1Edition") return setLevel1({ edition: el.value });
-      if (el.id === "appendText") return el.value && recompose(c.ids.concat([el.value]), c.from);
+      if (el.id === "appendText") return el.value && recompose(c.ids.concat([el.value]), c.fixed, c.from);
       if (el.id === "startOn") {
-        if (!el.checked) return c.from && recompose(c.ids, 0);
-        $("startPage").hidden = false;
-        $("startHint").hidden = false;
+        startOpen = el.checked;
+        if (!el.checked) return (c.from || c.done.length) && recompose(c.ids, c.ids[0], 0);
+        for (const id of ["startText", "startPage", "startHint"]) $(id).hidden = false;
+        $("startPage").focus();
+        return;
+      }
+      // متن البدء: ما قبله في القائمة محفوظ، ويبدأ من أوله حتى تُكتب الصفحة
+      if (el.id === "startText") {
+        if (el.value === c.start) return;
+        recompose(c.ids, el.value, 0);
         $("startPage").focus();
         return;
       }
       if (el.id === "startPage") {
-        const t = getText(c.ids[0]);
-        const span = pageSpan(t);
+        const r = startRange(c, c.start);
         const n = parseIntAny(el.value);
-        if (!(n > span.a && n <= span.b)) {
-          setStatus($("startHint"), `اكتب صفحة من ${AR(span.a + 1)} إلى ${AR(span.b)}.`, "error");
+        if (!(n >= r.a && n <= r.b)) {
+          setStatus($("startHint"), `اكتب صفحة من ${AR(r.a)} إلى ${AR(r.b)}.`, "error");
           return;
         }
-        return n !== c.from && recompose(c.ids, n);
+        // أول صفحة في المتن: يبدأ من أوله
+        const from = n === pageSpan(getText(c.start)).a ? 0 : n;
+        return from !== c.from && recompose(c.ids, c.start, from);
       }
       if (!el.matches("input[type=checkbox][data-id]")) return;
       const inLevel = levelTexts(lvl).map((t) => t.id);
@@ -7395,14 +7448,14 @@ const XlsxLite = (() => {
         setStatus($("textChecksNote"), "علّم متناً واحداً على الأقل.", "error");
         return;
       }
-      // صفحة البدء لأول متن في الخطة؛ فإن تغيّر أولها بدأت من أول المتن الجديد
-      recompose(checked.concat(c.ids.filter((id) => !inLevel.includes(id))), checked[0] === c.ids[0] ? c.from : 0);
+      // متن البدء وصفحته يبقيان ما بقي معلَّماً؛ وإلا تبدأ الخطة من أول متونها
+      recompose(checked.concat(c.ids.filter((id) => !inLevel.includes(id))), c.fixed, c.from);
     });
     $("textChecks").addEventListener("click", (e) => {
       const b = e.target.closest("[data-unappend]");
       if (!b) return;
       const c = composition(+$("level").value);
-      recompose(c.ids.filter((id) => id !== b.dataset.unappend), c.from);
+      recompose(c.ids.filter((id) => id !== b.dataset.unappend), c.fixed, c.from);
     });
     $("textChecks").addEventListener("keydown", (e) => {
       if (e.target.id === "startPage" && e.key === "Enter") {
