@@ -453,8 +453,63 @@ input.mini {
 .l1-box[hidden] {
   display: none;
 }
-#level1Box {
-  margin-top: 8px;
+/* المتون: علامة صح لكل متن من المستوى، وكلها معلَّمة في الأصل */
+.field > .field-title {
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+.text-checks {
+  display: grid;
+  gap: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+.text-checks[hidden] {
+  display: none;
+}
+.tcheck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tcheck:last-of-type {
+  border-bottom: 0;
+}
+.tcheck input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+.tcheck label {
+  flex: 1 1 8em;
+  min-width: 0;
+  cursor: pointer;
+}
+.tcheck .tdays {
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tcheck select {
+  width: auto;
+  padding: 3px 8px;
+  font-size: 0.9rem;
+}
+.tcheck.is-off label {
+  color: var(--muted);
+}
+.text-checks .hint {
+  padding: 4px 0 2px;
+}
+.text-checks .hint[data-kind="error"] {
+  color: var(--danger);
 }
 .level-field select {
   padding: 5px 8px;
@@ -1355,19 +1410,10 @@ a.link-btn {
         <select id="level"></select>
       </div>
       <div class="field">
-        <label for="text">المتن</label>
-        <select id="text"></select>
+        <p class="field-title" id="textLabel">المتون</p>
+        <div class="text-checks" id="textChecks" role="group" aria-labelledby="textLabel"></div>
+        <select id="text" aria-labelledby="textLabel" hidden></select>
         <p class="hint" id="textInfo"></p>
-        <div class="l1-box" id="level1Box" hidden>
-          <div class="level-field">
-            <label for="l1Edition">طبعة المختصر</label>
-            <select id="l1Edition"></select>
-          </div>
-          <div class="check">
-            <input type="checkbox" id="l1Adhkar" checked>
-            <label for="l1Adhkar">وبعده الأذكار والآداب في الخطة</label>
-          </div>
-        </div>
       </div>
 
       <div class="field">
@@ -1483,7 +1529,7 @@ a.link-btn {
             </div>
           </div>
           <div class="review-body" id="levelsBody" hidden>
-            <p class="hint">كما في خطط المستويات: تبدأ من أول متن المستوى الأول، ثم متون كل مستوى بترتيب صفحاتها، حتى ما قبل متن الخطة.</p>
+            <p class="hint">كما في خطط المستويات: تبدأ من أول متن المستوى الأول، ثم متون كل مستوى بترتيب صفحاتها، حتى ما قبل مستوى الخطة.</p>
             <div class="l1-box" id="revL1">
               <div class="level-field">
                 <label for="revEdition">المستوى الأول: طبعة المختصر</label>
@@ -4538,8 +4584,9 @@ const XlsxLite = (() => {
       segments: parts.map((t) => ({ id: t.id, days: t.days.length })),
     };
   });
+  // المستوى الأول كاملاً: المختصر بطبعته المختارة ثم الأذكار والآداب
   function level1Plan() {
-    const parts = level1Ids().map((id) => TEXTS.find((t) => t.id === id));
+    const parts = [state.level1.edition, "adhkar"].map((id) => TEXTS.find((t) => t.id === id));
     return {
       id: "level-1",
       isLevel: true,
@@ -4552,15 +4599,65 @@ const XlsxLite = (() => {
       segments: parts.map((t) => ({ id: t.id, days: t.days.length })),
     };
   }
+  // خطة من بعض متون المستوى (ما عُلِّم منها في قائمة «المتون») بترتيب البرنامج، كخطة المستوى كاملاً
+  const selCache = {};
+  function selectionPlan(id) {
+    if (selCache[id]) return selCache[id];
+    const m = /^sel:(\d+):(.+)$/.exec(id || "");
+    if (!m) return null;
+    const lvl = +m[1];
+    const want = m[2].split(",");
+    const parts = TEXTS.filter((t) => t.level === lvl && want.includes(t.id));
+    if (lvl < 2 || parts.length < 2 || parts.length !== new Set(want).size) return null;
+    return (selCache[id] = {
+      id,
+      isLevel: true,
+      isSel: true,
+      level: lvl,
+      name: `${LEVEL_NAMES[lvl]}: ${parts.map((t) => SHORT[t.id] || AR(t.name)).join("، ")}`,
+      title: `خطة ${LEVEL_NAMES[lvl]}`,
+      qr: null,
+      parts: parts.map((t) => t.id),
+      days: parts.flatMap((t) => t.days),
+      segments: parts.map((t) => ({ id: t.id, days: t.days.length })),
+    });
+  }
   const getText = (id) =>
-    id === "level-1" ? level1Plan() : allTexts().find((t) => t.id === id) || LEVEL_PLANS.find((t) => t.id === id);
-  // ما يظهر في قائمة «المتن» لكل مستوى: المستوى كاملاً ثم متونه
-  function levelOptions(lvl) {
-    if (lvl === 0) return customTexts.slice();
-    if (lvl === 1) return [level1Plan()].concat(LEVEL1_BOOKS.map((id) => getText(id)));
-    // المتون الإضافية كتب مستقلة، فلا «كاملاً» لها
-    const whole = LEVEL_PLANS.find((t) => t.level === lvl);
-    return (whole ? [whole] : []).concat(TEXTS.filter((t) => t.level === lvl));
+    id === "level-1"
+      ? level1Plan()
+      : allTexts().find((t) => t.id === id) || LEVEL_PLANS.find((t) => t.id === id) || selectionPlan(id);
+  // متون المستوى في قائمة «المتون» بترتيب البرنامج (المستوى الأول: المختصر بطبعته ثم الأذكار والآداب)
+  const levelTexts = (lvl) => (lvl === 1 ? [state.level1.edition, "adhkar"].map(getText) : TEXTS.filter((t) => t.level === lvl));
+  // ما عُلِّم من متون المستوى في الخطة
+  const ownIds = (t = state.text) => (t.isLevel ? t.parts.slice() : [t.id]);
+  // الخطة من المتون المعلَّمة: كلها خطة المستوى كاملاً، وواحد منها خطته، وغير ذلك خطة تجمعها
+  function selectionId(lvl, ids) {
+    const all = levelTexts(lvl).map((t) => t.id);
+    const picked = all.filter((id) => ids.includes(id));
+    if (picked.length <= 1) return picked[0] || null;
+    if (lvl === 1) return "level-1";
+    if (picked.length === all.length && LEVEL_PLANS.some((t) => t.level === lvl)) return "level-" + lvl;
+    return `sel:${lvl}:${picked.join(",")}`;
+  }
+  // «المستوى الخامس: الورقات، الطحاوية» (اسم خطة بعض المتون في ملف اكسل) ← خطة تلك المتون
+  function selectionByName(name) {
+    const m = /^(.+?):\s*(.+)$/.exec(name || "");
+    if (!m) return null;
+    const lvl = +Object.keys(LEVEL_NAMES).find((l) => norm(LEVEL_NAMES[l]) === norm(m[1]));
+    if (!lvl) return null;
+    const ids = m[2].split("،").map((x) => {
+      const t = TEXTS.find((t) => t.level === lvl && (norm(SHORT[t.id] || "") === norm(x) || norm(t.name) === norm(x)));
+      return t && t.id;
+    });
+    const id = ids.every(Boolean) && ids.length > 1 ? selectionId(lvl, ids) : null;
+    return id && id.startsWith("sel:") ? getText(id) : null;
+  }
+  // متون المستوى غير المعلَّمة: لا تدخل في الخطة ولا في المراجعة ولا يُتابَع منها الربط.
+  // (والخطة الجاهزة لمتن واحد على ترتيب البرنامج: ما قبله من مستواه محفوظ يُراجَع.)
+  function excludedIds(t = state.text) {
+    if (!t || t.custom || state.prevInLevel) return new Set();
+    const own = new Set(ownIds(t));
+    return new Set(levelTexts(levelOf(t)).map((x) => x.id).filter((id) => !own.has(id)));
   }
   const levelOf = (t) => (t.custom ? 0 : t.level);
   const pagesCache = {};
@@ -4602,13 +4699,45 @@ const XlsxLite = (() => {
     $("level").innerHTML = lvls.map((l) => `<option value="${l}">${l ? LEVEL_NAMES[l] : "خطط مرفوعة"}</option>`).join("");
     if (state.text) $("level").value = String(levelOf(state.text));
   }
+  // «ط. ٤٥» من اسم طبعة المختصر
+  const editionLabel = (id) => {
+    const name = AR(getText(id).name);
+    const m = /\(([^()]*ط[^()]*)\)\s*$/.exec(name);
+    return m ? m[1] : name;
+  };
+  // قائمة «المتون»: علامة صح لكل متن من المستوى (والخطط المرفوعة تُختار من قائمة)
   function fillTextSelect(lvl) {
-    $("text").innerHTML = levelOptions(lvl).map((t) => `<option value="${t.id}">${esc(AR(t.name))}</option>`).join("");
+    const custom = lvl === 0;
+    const box = $("textChecks");
+    box.hidden = custom;
+    $("text").hidden = !custom;
+    $("textLabel").textContent = custom ? "الخطة المرفوعة" : "المتون";
+    box.dataset.text = state.text ? state.text.id : "";
+    if (custom) {
+      $("text").innerHTML = customTexts.map((t) => `<option value="${t.id}">${esc(AR(t.name))}</option>`).join("");
+      if (state.text) $("text").value = state.text.id;
+      return;
+    }
+    const own = new Set(state.text && levelOf(state.text) === lvl ? ownIds(state.text) : []);
+    box.innerHTML =
+      levelTexts(lvl)
+        .map((t, i) => {
+          const on = own.has(t.id);
+          const ed = lvl === 1 && isMukhtasar(t);
+          const label = ed ? AR(t.name).replace(/\s*\([^()]*ط[^()]*\)\s*$/, "") : AR(t.name);
+          const editions = ed
+            ? `<select id="l1Edition" aria-label="طبعة المختصر">${MUKHTASAR_EDITIONS.map((id) => `<option value="${id}"${id === t.id ? " selected" : ""}>${esc(editionLabel(id))}</option>`).join("")}</select>`
+            : "";
+          return `<div class="tcheck${on ? "" : " is-off"}"><input type="checkbox" id="tc-${i}" data-id="${t.id}"${on ? " checked" : ""}><label for="tc-${i}">${esc(label)}</label>${editions}<span class="tdays">${daysWord(t.days.length)}</span></div>`;
+        })
+        .join("") + `<p class="hint" id="textChecksNote">ما لا تعلّمه لا يدخل في الخطة ولا في المراجعة.</p>`;
   }
 
   /* ---------- الحالة ---------- */
   const state = {
     text: null,
+    // الخطط الجاهزة لمتن واحد: ما قبله من مستواه محفوظ (يُراجَع ويُتابَع منه الربط)
+    prevInLevel: false,
     days: 0,
     maxDays: 0,
     link: Object.assign({}, DEFAULT_LINK),
@@ -4637,7 +4766,8 @@ const XlsxLite = (() => {
   function autoLinkDays() {
     return Math.max(1, Math.round((linkOrig(state.text) * state.days) / state.text.days.length));
   }
-  // المتن السابق الذي يُتابَع منه الربط: ما قبله في ترتيب البرنامج، ولأول المستوى الثاني متن المستوى الأول
+  // المتن السابق الذي يُتابَع منه الربط: آخر متن قبل مستوى الخطة (فمتون مستواها غير المعلَّمة لا تُعدّ محفوظة)،
+  // ولأول المستوى الثاني آخر المستوى الأول؛ وفي الخطة الجاهزة لمتن واحد: ما قبله في ترتيب البرنامج
   function defaultPrev(t) {
     if (!t || t.custom) return null;
     const first = t.isLevel ? getText(t.parts[0]) : t;
@@ -4645,7 +4775,7 @@ const XlsxLite = (() => {
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
     // المتون الإضافية بعد المستوى السادس، وكل منها مستقل عن غيره
     if (first.level > 6) return rest[rest.length - 1] || null;
-    const i = rest.indexOf(first);
+    const i = state.prevInLevel ? rest.indexOf(first) : rest.findIndex((x) => x.level === first.level);
     const l1 = level1Ids();
     return i > 0 ? rest[i - 1] : getText(l1[l1.length - 1]) || null;
   }
@@ -4653,6 +4783,8 @@ const XlsxLite = (() => {
 
   function selectText(id, days, preset = {}) {
     const t = getText(id) || getText("level-1");
+    // طبعة المختصر المختارة هي طبعة المستوى الأول في القائمة وفي المراجعة
+    if (isMukhtasar(t)) state.level1.edition = t.id;
     state.text = t;
     state.maxDays = pagesOf(t.id);
     state.days = clampDays(days || t.days.length);
@@ -4662,7 +4794,6 @@ const XlsxLite = (() => {
     fillLevelSelect();
     $("level").value = String(levelOf(t));
     fillTextSelect(levelOf(t));
-    $("text").value = t.id;
     $("title").value = state.title;
     $("titleNote").hidden = !t.isLevel;
     renderTextInfo();
@@ -4818,8 +4949,14 @@ const XlsxLite = (() => {
   }
   function validReview(r) {
     if (!r || !Array.isArray(r.items)) return null;
+    const excl = excludedIds();
     const items = r.items
-      .filter((it) => it && (it.source === "self" || (getText(it.source) && it.source !== state.text.id)) && (it.mode === "pages" || it.mode === "days"))
+      .filter(
+        (it) =>
+          it &&
+          (it.source === "self" || (getText(it.source) && it.source !== state.text.id && !excl.has(it.source))) &&
+          (it.mode === "pages" || it.mode === "days")
+      )
       .slice(0, MAX_REVIEW)
       .map((it) => ({ source: it.source, mode: it.mode, value: clampInt(it.value, 1, 999, 20) }));
     const lv = r.levels || {};
@@ -4849,13 +4986,15 @@ const XlsxLite = (() => {
     });
   }
 
-  // ما حفظه الطالب قبل هذا المتن بترتيب البرنامج: متن المستوى الأول ثم متون المستويات بعده
+  // ما حفظه الطالب قبل الخطة بترتيب البرنامج: متن المستوى الأول ثم متون المستويات قبل مستوى الخطة
+  // (ومن مستواها: المعلَّم هو الخطة نفسها، وغير المعلَّم لا يُراجَع؛ إلا في الخطة الجاهزة لمتن واحد)
   function previousTexts(t) {
-    const own = new Set(t.isLevel ? t.parts : [t.id]);
-    const l1 = t.custom || t.level > 1 ? level1Ids() : t.id === "adhkar" ? [state.level1.edition] : [];
+    const own = new Set(ownIds(t));
+    const l1 = t.custom || t.level > 1 ? level1Ids() : t.id === "adhkar" && state.prevInLevel ? [state.level1.edition] : [];
     const out = l1.filter((id) => !own.has(id)).map(getText);
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
-    const upto = t.custom || t.level > 6 ? rest.length : t.isLevel ? rest.findIndex((x) => x.level === t.level) : rest.indexOf(t);
+    const upto =
+      t.custom || t.level > 6 ? rest.length : t.isLevel || !state.prevInLevel ? rest.findIndex((x) => x.level === t.level) : rest.indexOf(t);
     return upto > 0 ? out.concat(rest.slice(0, upto)) : out;
   }
   // المتن الذي يلي آخر متن في القائمة
@@ -4882,8 +5021,8 @@ const XlsxLite = (() => {
     if (L > 1) {
       const ids = level1Ids();
       seq.push({ label: LEVEL_NAMES[1], names: ids.map((id) => AR(getText(id).name)), ids, lvl: 1 });
-    } else if (!t.isLevel && t.id === "adhkar") {
-      // الأذكار والآداب وحده: يُراجَع المختصر قبله
+    } else if (!t.isLevel && t.id === "adhkar" && state.prevInLevel) {
+      // الأذكار والآداب وحده في خطة جاهزة: يُراجَع المختصر قبله
       const e = state.level1.edition;
       seq.push({ label: AR(getText(e).name), ids: [e], lvl: 1 });
     }
@@ -4894,7 +5033,8 @@ const XlsxLite = (() => {
     for (let lvl = 2; lvl <= Math.min(L, 6); lvl++) {
       let texts = TEXTS.filter((x) => x.level === lvl);
       const partial = lvl === L;
-      if (partial && t.isLevel) continue; // خطة المستوى كاملاً: متونه هي «المتن نفسه»
+      // مستوى الخطة: ما عُلِّم منه هو «المتن نفسه»، وغير المعلَّم لا يُراجَع (إلا في الخطة الجاهزة لمتن واحد)
+      if (partial && (t.isLevel || !state.prevInLevel)) continue;
       if (partial) texts = texts.slice(0, texts.indexOf(t));
       if (!texts.length) continue;
       texts.sort(order);
@@ -4943,8 +5083,9 @@ const XlsxLite = (() => {
   function reviewOptions(selected) {
     let html = "";
     const groups = {};
+    const excl = excludedIds();
     allTexts().forEach((t) => {
-      if (t.id !== state.text.id) (groups[t.level] = groups[t.level] || []).push(t);
+      if (t.id !== state.text.id && !excl.has(t.id)) (groups[t.level] = groups[t.level] || []).push(t);
     });
     for (const lvl of Object.keys(groups)) {
       html += `<optgroup label="${LEVEL_NAMES[lvl] || "خطط مرفوعة"}">`;
@@ -4977,15 +5118,12 @@ const XlsxLite = (() => {
     if (levels) renderLevels();
     else renderReviewList();
   }
-  // محتوى المستوى الأول: في الإنشاء عند اختيار «المستوى الأول كاملاً»، وفي المراجعة لما بعده
+  // محتوى المستوى الأول في المراجعة لما بعده (وفي الإنشاء: طبعة المختصر في قائمة «المتون»)
   function renderLevel1Controls() {
     const c = state.level1;
     const t = state.text;
     const L = t.custom ? 7 : t.level;
-    $("level1Box").hidden = t.id !== "level-1";
-    $("l1Edition").value = c.edition;
-    $("l1Adhkar").checked = c.adhkar;
-    $("revL1").hidden = !(L > 1 || (!t.isLevel && t.id === "adhkar"));
+    $("revL1").hidden = !(L > 1);
     $("revAdhkarRow").hidden = !(L > 1);
     $("revEdition").value = c.edition;
     $("revAdhkar").checked = c.adhkar;
@@ -5478,7 +5616,7 @@ const XlsxLite = (() => {
       const rows = isCsv ? XlsxLite.readCsv(await file.text()) : await XlsxLite.read(await file.arrayBuffer());
       const { meta, rows: plan } = parsePlanSheet(rows);
       if (!plan.length) throw new Error("لم أجد عموداً بعنوان «الحفظ» ولا مقادير في الملف");
-      const known = meta.name && allTexts().concat(LEVEL_PLANS).find((t) => norm(t.name) === meta.name);
+      const known = meta.name && (allTexts().concat(LEVEL_PLANS).find((t) => norm(t.name) === meta.name) || selectionByName(meta.name));
       const bad = known ? [] : plan.map((r, i) => (PlanCore.parseRange(r.memo) ? null : AR(i + 1))).filter(Boolean);
       if (bad.length) throw new Error(`مقادير الحفظ غير مفهومة في الصفوف: ${bad.slice(0, 8).join("، ")}`);
       const t = known || registerCustom({ name: meta.name || file.name.replace(/\.[^.]+$/, ""), title: meta.title, days: plan.map((r) => r.memo) });
@@ -5854,6 +5992,7 @@ const XlsxLite = (() => {
   // يضع خطة محفوظة في صفحة الإنشاء كما حُفظت؛ يعيد false إن لم يوجد متنها
   function openPlan(p) {
     let id = p.textId;
+    if (id === "level-1" && p.level1 && p.level1.adhkar === false) id = validLevel1(p.level1).edition;
     if (!id && p.custom) id = registerCustom(p.custom).id;
     if (!getText(id)) return false;
     state.link = Object.assign({}, DEFAULT_LINK, p.link || {});
@@ -5977,9 +6116,9 @@ const XlsxLite = (() => {
     fillTeacher();
     fillLevelSelect();
     if (state.text && state.plan) {
-      if (state.text.id === "level-1") state.text = getText("level-1");
+      for (const k of Object.keys(selCache)) delete selCache[k];
+      if (state.text.id === "level-1" || state.text.isSel) state.text = getText(state.text.id);
       fillTextSelect(levelOf(state.text));
-      $("text").value = state.text.id;
       if (oldTitle !== null && state.title === oldTitle) {
         state.title = AR(state.text.title);
         $("title").value = state.title;
@@ -6521,6 +6660,7 @@ const XlsxLite = (() => {
     if (!t) throw new Error("متن هذه الخطة غير موجود");
     const saved = Object.assign({}, state);
     try {
+      state.prevInLevel = true;
       state.text = t;
       state.maxDays = pagesOf(t.id);
       state.days = Math.min(gen.days || t.days.length, state.maxDays);
@@ -6579,8 +6719,8 @@ const XlsxLite = (() => {
     $("level").addEventListener("change", (e) => {
       const lvl = +e.target.value;
       const prefs = loadPrefs();
-      const opts = levelOptions(lvl);
-      const id = opts[0] && opts[0].id;
+      // متون المستوى كلها معلَّمة في الأصل
+      const id = lvl === 0 ? customTexts[0] && customTexts[0].id : selectionId(lvl, levelTexts(lvl).map((t) => t.id));
       state.loaded = null;
       state.approved = null;
       selectText(id, prefs.days && prefs.days[id]);
@@ -6591,6 +6731,24 @@ const XlsxLite = (() => {
       state.loaded = null;
       state.approved = null;
       selectText(e.target.value, prefs.days && prefs.days[e.target.value]);
+      renderLibrary();
+    });
+    // علامة صح على متن: الخطة من المتون المعلَّمة (ومتن واحد على الأقل)
+    $("textChecks").addEventListener("change", (e) => {
+      const el = e.target;
+      if (el.id === "l1Edition") return setLevel1({ edition: el.value });
+      if (!el.matches("input[type=checkbox][data-id]")) return;
+      const ids = [...$("textChecks").querySelectorAll("input[data-id]:checked")].map((c) => c.dataset.id);
+      if (!ids.length) {
+        el.checked = true;
+        setStatus($("textChecksNote"), "علّم متناً واحداً على الأقل.", "error");
+        return;
+      }
+      // تغيّرت متون الخطة: تبدأ بأيامها الأصلية
+      const id = selectionId(+$("level").value, ids);
+      state.loaded = null;
+      state.approved = null;
+      selectText(id);
       renderLibrary();
     });
     $("days").addEventListener("input", (e) => {
@@ -6825,18 +6983,21 @@ const XlsxLite = (() => {
     }
     // محتوى المستوى الأول (المختصر بإحدى طبعتيه، والأذكار والآداب)
     const editions = MUKHTASAR_EDITIONS.map((id) => `<option value="${id}">${esc(AR(getText(id).name))}</option>`).join("");
-    $("l1Edition").innerHTML = editions;
     $("revEdition").innerHTML = editions;
-    const setLevel1 = (patch) => {
+    // طبعة المختصر (في قائمة «المتون» للمستوى الأول وفي المراجعة) والأذكار والآداب في مراجعة المستوى الأول
+    function setLevel1(patch) {
       Object.assign(state.level1, patch);
-      if (state.text.id === "level-1") selectText("level-1", undefined, { keepLink: true, review: state.review, title: state.title });
+      const t = state.text;
+      if (t.id === "level-1") selectText("level-1", undefined, { keepLink: true, review: state.review, title: state.title });
+      else if (patch.edition && isMukhtasar(t)) selectText(patch.edition, undefined, { keepLink: true, review: state.review });
       else {
+        if (levelOf(t) === 1) fillTextSelect(1);
         if (state.review.method === "levels") renderLevels();
         regenerate();
       }
-    };
-    for (const id of ["l1Edition", "revEdition"]) $(id).addEventListener("change", (e) => setLevel1({ edition: e.target.value }));
-    for (const id of ["l1Adhkar", "revAdhkar"]) $(id).addEventListener("change", (e) => setLevel1({ adhkar: e.target.checked }));
+    }
+    $("revEdition").addEventListener("change", (e) => setLevel1({ edition: e.target.value }));
+    $("revAdhkar").addEventListener("change", (e) => setLevel1({ adhkar: e.target.checked }));
     $("levelStartOn").addEventListener("change", (e) => {
       const lv = state.review.levels;
       lv.startOn = e.target.checked;
@@ -6986,7 +7147,9 @@ const XlsxLite = (() => {
       };
     }
     state.level1 = level1FromPrefs(prefs);
-    const id = prefs.text && getText(prefs.text) ? prefs.text : "level-1";
+    // حفظ قديم: «المستوى الأول كاملاً» بلا الأذكار والآداب هو المختصر وحده
+    const saved = prefs.text && getText(prefs.text) ? prefs.text : "level-1";
+    const id = saved === "level-1" && prefs.level1 && prefs.level1.adhkar === false ? state.level1.edition : saved;
     const days = prefs.days && prefs.days[id] ? prefs.days[id] : undefined;
     selectText(id, days, { keepLink: !!(prefs.link && prefs.link.daysManual) });
     renderLibrary();
