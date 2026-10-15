@@ -31,6 +31,7 @@ async def set_defaults(page):
     # الأيام: السبت (٦) بدلاً من الخميس (٤)
     await page.click('#dWeekdays [data-wd="4"]')
     await page.click('#dWeekdays [data-wd="6"]')
+    await page.check('#dExcelDaily')
     await page.fill('#dNotice', 'تنبيه: خطط الفصل الثاني متاحة.\nالسطر الثاني.')
     await page.click('#dSave')
     for _ in range(50):
@@ -78,7 +79,7 @@ async def artifact(b):
     st = await page.inner_text('#defaultsStatus')
     store = await page.evaluate('window.__fakedb')
     doc = store.get('config/settings')
-    check('حُفظت' in st and doc and doc['settings']['link'] == {'enabled': True, 'mode': 'days', 'pages': 8, 'days': 5, 'cont': True}, f'saved to config/settings: {st}')
+    check('حُفظت' in st and doc and doc['settings']['link'] == {'enabled': True, 'mode': 'days', 'pages': 8, 'days': 5, 'cont': True} and doc['settings']['excel'] == 'daily', f'saved to config/settings: {st}')
     # تُطبَّق على صاحب الصفحة مباشرة
     await page.evaluate("location.hash = 'create'")
     await page.wait_for_timeout(300)
@@ -166,7 +167,7 @@ async def artifact(b):
     await page.click('#dSave')
     await page.wait_for_timeout(400)
     doc2 = (await page.evaluate('window.__fakedb'))['config/settings']
-    check(doc2['settings']['link']['pages'] == 10 and doc2['settings']['review']['method'] == 'levels' and doc2['settings']['notice'] == '', 'built-in defaults saved back')
+    check(doc2['settings']['link']['pages'] == 10 and doc2['settings']['review']['method'] == 'levels' and doc2['settings']['notice'] == '' and doc2['settings']['excel'] == 'simple', 'built-in defaults saved back')
     await page.evaluate("location.hash = 'ready'")
     await page.wait_for_timeout(200)
     check(not await page.is_visible('#siteNotice'), 'empty notice is hidden')

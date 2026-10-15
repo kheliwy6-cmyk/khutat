@@ -1310,21 +1310,211 @@
       await offerFile(await pdfBlob(), baseFilename() + ".pdf", st);
     }, st);
   }
+  /* ---------- ملف اكسل بطريقة التسجيل اليومي ----------
+     الخطة كما تُكتب في ورقة «بيانات الخطط» في ملف التسجيل اليومي للحلقة (ومنها تختار بطاقة الطالب خطته):
+     اسم المستوى واسم المتن، ثم لكل يوم «مقدار» فيه الحفظ والربط والكبرى (جزء، من، إلى)، و«تجاوز الإجمالي» عدد صفحات
+     المقدار إذا امتد بين جزأين أو رجعت صفحاته، وصيغ الإجماليات كما هي هناك. كل خطة هناك ١٠٦ صفوف وفيها ١٠٠ مقدار على الأكثر،
+     فكل ورقة هنا خطة واحدة: تُنسخ A1:P105 وتُلصق في أول خلية من خطة فارغة (والأطول من ١٠٠ يوم في أوراق متتالية).
+     والورقة الأخيرة الخطة بالأيام كما في الموقع (بتواريخها وملاحظاتها)، ومنها تُرفع الخطة إلى الموقع.
+     ويختار صاحب الصفحة من لوحة التحكم هذه الصيغة أو الجدول البسيط وحده. */
+  const DAILY = { block: 106, max: 100, slots: 30 };
+  const DAILY_STYLES = (() => {
+    const c = { dark: "0E6B76", mid: "3E92A0", ink: "1F4E78", input: "FFF7DE", box: "CFEBEF", over: "FCD9B6", overInk: "C0521A", num: "E7EBEC", line: "B9C4C6" };
+    const cell = (o) => Object.assign({ font: "Arial", size: 11, border: c.line, h: "center", wrap: true }, o);
+    return {
+      lbl: cell({ bold: true, color: "FFFFFF", fill: c.dark, h: "right" }),
+      inp: cell({ bold: true, color: c.ink, fill: c.input, h: "right" }),
+      boxLbl: cell({ bold: true, size: 10, color: "FFFFFF", fill: c.mid, h: "right" }),
+      box: cell({ bold: true, color: c.dark, fill: c.box }),
+      head: cell({ bold: true, color: "FFFFFF", fill: c.mid }),
+      headOver: cell({ bold: true, size: 9, color: "FFFFFF", fill: c.over }),
+      headTot: cell({ bold: true, size: 9, color: "FFFFFF", fill: c.dark }),
+      sub: cell({ bold: true, size: 10, color: "FFFFFF", fill: c.mid }),
+      num: cell({ bold: true, color: "000000", fill: c.num }),
+      val: cell({ color: c.ink, fill: c.input }),
+      over: cell({ color: c.overInk, fill: c.over }),
+      tot: cell({ color: c.dark, fill: c.box }),
+      noteTitle: { font: "Arial", size: 13, bold: true, color: c.dark, h: "right" },
+      note: { font: "Arial", size: 11, color: "000000", h: "right" },
+      noteHead: cell({ bold: true, color: "FFFFFF", fill: c.mid }),
+      noteCell: cell({ color: "000000" }),
+    };
+  })();
+  // أول صفحة وآخرها في المتن الذي فيه الصفحة p من الجزء lv (لخانة عدّلها المستخدم بصيغة «١/٢٥٨←٢/٨٢»)
+  function textSpanAt(lv, p) {
+    if (lv == null) return null;
+    for (const t of allTexts()) {
+      const us = PlanCore.buildUnits(t.days);
+      if (us.length && us[0].level === lv && us.some((u) => u.page === p)) return { a: us[0].page, b: us[us.length - 1].page };
+    }
+    return null;
+  }
+  // نص خانة ← قطع صفحاتها [{level, from, to}]، أو null إن لم يُفهم
+  function runsOfText(s) {
+    const t = ASCII(stripMarks(s)).replace(/[–—]/g, "-").replace(/\s+/g, "");
+    if (!t || t === "-") return [];
+    const ends = t.split("←");
+    if (ends.length === 2) {
+      const a = PlanCore.parseRange(ends[0]);
+      const b = PlanCore.parseRange(ends[1]);
+      const sa = a && textSpanAt(a.level, a.a);
+      const sb = b && textSpanAt(b.level, b.b);
+      if (!sa || !sb || a.level === b.level) return null;
+      return [{ level: a.level, from: a.a, to: sa.b }, { level: b.level, from: sb.a, to: b.b }];
+    }
+    if (ends.length > 2) return null;
+    const runs = [];
+    for (const piece of t.split("+")) {
+      const r = PlanCore.parseRange(piece);
+      if (!r) return null;
+      runs.push({ level: r.level, from: r.a, to: r.b });
+    }
+    // «٢/١٣٣-١٤٠+٢٥-٢٦»: جزء أول القطع لما بعدها
+    for (let i = 1; i < runs.length; i++) if (runs[i].level == null) runs[i].level = runs[i - 1].level;
+    return runs;
+  }
+  // قطع صفحات خانة كما في الخطة، أو كما عدّلها المستخدم
+  function cellRuns(i, col) {
+    const k = i + ":" + col;
+    if (k in state.edits) return runsOfText(state.edits[k]);
+    const r = state.plan.rows[i];
+    return r.runs ? r.runs[col] || [] : runsOfText(r[col]);
+  }
+  /* قطع الصفحات ← [جزء، من، إلى، تجاوز الإجمالي]
+     جزء «-» للمتن المطبوع وحده بلا جزء، و«١←٢» لمقدار يمتد من جزء إلى آخر؛ ومن وإلى أول صفحة وآخرها؛
+     وتجاوز الإجمالي مجموع صفحات القطع إذا كانت أكثر من قطعة (امتد بين جزأين أو رجعت صفحاته)، فلا يُحسب «إلى − من + ١» */
+  function dailyCells(runs, text) {
+    if (runs === null) return ["-", ASCII(stripMarks(text)), "-", null];
+    if (!runs.length) return ["-", "-", "-", null];
+    const a = runs[0];
+    const b = runs[runs.length - 1];
+    const part = a.level === b.level ? (a.level == null ? "-" : a.level) : a.level != null && b.level != null ? `${a.level}←${b.level}` : "-";
+    const over = runs.length > 1 ? runs.reduce((n, r) => n + r.to - r.from + 1, 0) : null;
+    return [part, a.from, b.to, over];
+  }
+  // اسم المستوى واسم المتن (في قائمة «اختر خطة المستوى» في بطاقة الطالب: «خطة ١٠ - المستوى ٢ - …»)
+  function dailyNames() {
+    const t = state.text;
+    const lvl = t.custom ? 0 : t.level;
+    const level = lvl >= 1 && lvl <= 6 ? `المستوى ${lvl}` : lvl === 7 ? LEVEL_NAMES[7] : "خطة خاصة";
+    const segs = t.segs || (t.isLevel ? t.parts.map((id) => ({ id, from: 0 })) : [{ id: baseOf(t), from: 0 }]);
+    const nameOf = (id) => {
+      const x = getText(id);
+      return segs.length === 1 ? (x ? x.name : id) : SHORT[id] || (x ? x.name : id);
+    };
+    let text = t.custom ? t.name : segs.map((x) => nameOf(x.id) + (x.from ? ` من ص${x.from}` : "")).join("-");
+    if (state.plan.D !== t.days.length) text += ` (${asciiDays(state.plan.D)})`;
+    if (studentName()) text += ` - ${studentName()}`;
+    return { level, text: ASCII(text).replace(/\s+/g, " ").trim() };
+  }
+  // أوراق «بيانات الخطط»: كل ورقة خطة واحدة (١٠٠ مقدار على الأكثر) بالصفوف والصيغ والألوان كما في ملف التسجيل اليومي
+  function dailySheets() {
+    const portions = state.plan.rows.map((_, i) => {
+      const cells = ["memo", "link", "big"].map((col) => dailyCells(cellRuns(i, col), cellValue(i, col)));
+      return cells.flatMap((c) => c.slice(0, 3)).concat(cells.map((c) => c[3]));
+    });
+    // «الإجمالي الفعلي» لكل بند كما تحسبه صيغة الملف
+    const total = (p, j) => (p[9 + j] != null ? p[9 + j] : typeof p[3 * j + 1] === "number" && typeof p[3 * j + 2] === "number" ? p[3 * j + 2] - p[3 * j + 1] + 1 : "");
+    const names = dailyNames();
+    const K = Math.ceil(portions.length / DAILY.max);
+    const S = (v, st) => ({ v, s: st });
+    const sheets = [];
+    for (let k = 0; k < K; k++) {
+      const rows = [];
+      const merges = [];
+      const part = portions.slice(k * DAILY.max, (k + 1) * DAILY.max);
+      const first = 6;
+      const last = 5 + DAILY.max;
+      const sums = [0, 1, 2].map((j) => part.reduce((n, p) => n + (typeof total(p, j) === "number" ? total(p, j) : 0), 0));
+      const count = part.filter((p) => typeof total(p, 0) === "number").length;
+      const text = K > 1 ? `${names.text} (${k + 1} من ${K})` : names.text;
+      const head = [
+        ["اسم/رقم المستوى:", names.level, "إجمالي صفحات الحفظ:", { f: `IFERROR(SUM(N${first}:N${last}),0)`, v: sums[0], s: "box" }],
+        ["اسم المتن:", text, "إجمالي صفحات الربط:", { f: `IFERROR(SUM(O${first}:O${last}),0)`, v: sums[1], s: "box" }],
+        ["عدد مقادير الخطة (تلقائي):", { f: `COUNT(N${first}:N${last})`, v: count, s: "box" }, "إجمالي صفحات الكبرى:", { f: `IFERROR(SUM(P${first}:P${last}),0)`, v: sums[2], s: "box" }],
+      ];
+      head.forEach(([l, v, bl, bx], n) => {
+        const val = typeof v === "object" ? v : S(v, "inp");
+        rows[n] = [S(l, "lbl"), S(null, "lbl"), S(null, "lbl"), val, S(null, val.s), S(null, val.s), S(bl, "boxLbl"), S(null, "boxLbl"), bx, S(null, "box")];
+        merges.push(`A${n + 1}:C${n + 1}`, `D${n + 1}:F${n + 1}`, `G${n + 1}:H${n + 1}`, `I${n + 1}:J${n + 1}`);
+      });
+      const h = (v) => S(v, "head");
+      rows[3] = [h("م"), h("الحفظ"), h(null), h(null), h("الربط"), h(null), h(null), h("الكبرى"), h(null), h(null),
+        S("تجاوز الإجمالي (اختياري - إن كان المقدار يمتد بين جزأين)", "headOver"), S(null, "headOver"), S(null, "headOver"),
+        S("الإجمالي الفعلي (يُستخدم في كل الحسابات)", "headTot"), S(null, "headTot"), S(null, "headTot")];
+      rows[4] = [h(null)].concat(["جزء", "من", "إلى", "جزء", "من", "إلى", "جزء", "من", "إلى", "حفظ", "ربط", "كبرى", "حفظ", "ربط", "كبرى"].map((x) => S(x, "sub")));
+      merges.push("A4:A5", "B4:D4", "E4:G4", "H4:J4", "K4:M4", "N4:P4");
+      const heights = { 0: 19.5, 1: 18, 2: 18, 3: 24, 4: 15.75 };
+      for (let m = 0; m < DAILY.max; m++) {
+        const p = part[m];
+        const rr = 6 + m;
+        const tot = (j, a, bb, o) => ({ f: `IFERROR(IF(${o}${rr}<>"",${o}${rr},IF(${a}${rr}="","",${bb}${rr}-${a}${rr}+1)),"")`, v: p ? total(p, j) : "", s: "tot" });
+        rows[5 + m] = [S(m + 1, "num")]
+          .concat(Array.from({ length: 9 }, (_, j) => S(p ? p[j] : null, "val")))
+          .concat([0, 1, 2].map((j) => S(p && p[9 + j] != null ? p[9 + j] : null, "over")))
+          .concat([tot(0, "C", "D", "K"), tot(1, "F", "G", "L"), tot(2, "I", "J", "M")]);
+        heights[5 + m] = 15;
+      }
+      const widths = Array(21).fill(0);
+      widths.fill(10, 0, 10);
+      widths.fill(11, 10, 16);
+      sheets.push({ name: K > 1 ? `للصق ${k + 1} من ${K}` : "للصق في بيانات الخطط", rows, merges, heights, widths });
+    }
+    // طريقة اللصق وأول صف لكل خطة في «بيانات الخطط»، بجانب الخطة في الورقة الأولى (لا تدخل فيما يُنسخ)
+    const sh = sheets[0];
+    const lines = [
+      ["طريقة إضافة هذه الخطة إلى ملف التسجيل اليومي (بطاقات الطلاب)", "noteTitle"],
+      ["1- في ملف الحلقة أظهر ورقة «بيانات الخطط» (مخفية في الملف)، واختر خطة فارغة: عدد مقاديرها 0 في جدول الخطط (العمود U).", "note"],
+      ["2- انسخ من هذه الورقة الخلايا من A1 إلى P105، والصقها في الخلية A من أول صف في تلك الخطة (انظر الجدول المجاور).", "note"],
+      [
+        K > 1
+          ? `   الخطة أطول من ${DAILY.max} يوم فهي في ${K} أوراق: الصق الأولى في خطة فارغة، والثانية في الخطة التي تليها${K > 2 ? "، وهكذا" : ""}.`
+          : "   مثلاً الخطة 10: اكتب A955 في مربع الاسم أعلى الورقة، ثم الصق (Ctrl+V).",
+        "note",
+      ],
+      [`3- تظهر في قائمة «اختر خطة المستوى» في بطاقة الطالب باسم: خطة (رقمها) - ${names.level} - ${K > 1 ? names.text + " (1 من " + K + ")" : names.text}`, "note"],
+      ["", "note"],
+      ["• خانة «جزء» فيها «-» للمتن المطبوع وحده بلا جزء، و«1←2» للمقدار الممتد من الجزء 1 إلى الجزء 2.", "note"],
+      ["• «تجاوز الإجمالي» فيه عدد صفحات المقدار إذا امتد بين جزأين أو رجعت صفحاته (كآخر متن وأول الذي يليه)، فتُحسب صفحاته صحيحة في البطاقة والإحصائيات.", "note"],
+      ["• الورقة الأخيرة «الخطة بالأيام» فيها الخطة كما في الموقع بتواريخها وملاحظاتها، ومنها تُرفع الخطة إلى الموقع.", "note"],
+    ];
+    const at = (r, c, cell) => {
+      sh.rows[r] = sh.rows[r] || [];
+      sh.rows[r][c] = cell;
+    };
+    lines.forEach(([t, st], r) => at(r, 17, S(t, st)));
+    at(0, 19, S("رقم الخطة", "noteHead"));
+    at(0, 20, S("أول صف", "noteHead"));
+    for (let n = 1; n <= DAILY.slots; n++) {
+      at(n, 19, S(n, "noteCell"));
+      at(n, 20, S(1 + DAILY.block * (n - 1), "noteCell"));
+    }
+    Object.assign(sh.widths, { 16: 3, 17: 125, 18: 3, 19: 11, 20: 11 });
+    sheets.forEach((x) => (x.rows = Array.from(x.rows, (r) => r || [])));
+    return sheets;
+  }
+  // الخطة بالأيام كما في الموقع (ومنها تُرفع الخطة إلى الموقع)
+  function daysSheet(name = "الخطة") {
+    const dur = durationText();
+    const head = [
+      ["المتن", AR(state.text.name)],
+      ["عنوان الخطة", currentTitle()],
+      ["اسم الطالب", studentName()],
+      ["الحلقة", state.halaqa.enabled ? state.halaqa.name : ""],
+      ["المدة", dur ? AR(dur) : ""],
+      [],
+      ["رقم اليوم", "اليوم", "التاريخ", "الحفظ", "الربط", "المراجعة الكبرى", "ملاحظات"],
+    ];
+    const body = currentRows().map((r, i) => [i + 1, r.day || "", r.date ? AR(r.date) : "", disp(r.memo), disp(r.link), disp(r.big), r.note || ""]);
+    return XlsxLite.simpleSheet(head.concat(body), { sheetName: name, widths: [12, 12, 12, 16, 16, 18, 24], bold: [0, 1, 2, 3, 4, 6] });
+  }
+  function xlsxBlob() {
+    if (settings.excel !== "daily") return XlsxLite.writeBook([daysSheet()]);
+    return XlsxLite.writeBook(dailySheets().concat([daysSheet("الخطة بالأيام")]), { styles: DAILY_STYLES });
+  }
   function exportXlsx() {
     return withBusy($("exportXlsx"), "جارٍ إعداد ملف اكسل…", async () => {
-      const dur = durationText();
-      const head = [
-        ["المتن", AR(state.text.name)],
-        ["عنوان الخطة", currentTitle()],
-        ["اسم الطالب", studentName()],
-        ["الحلقة", state.halaqa.enabled ? state.halaqa.name : ""],
-        ["المدة", dur ? AR(dur) : ""],
-        [],
-        ["رقم اليوم", "اليوم", "التاريخ", "الحفظ", "الربط", "المراجعة الكبرى", "ملاحظات"],
-      ];
-      const body = currentRows().map((r, i) => [i + 1, r.day || "", r.date ? AR(r.date) : "", disp(r.memo), disp(r.link), disp(r.big), r.note || ""]);
-      const blob = await XlsxLite.write(head.concat(body), { widths: [12, 12, 12, 16, 16, 18, 24], bold: [0, 1, 2, 3, 4, 6] });
-      await offerFile(blob, baseFilename() + ".xlsx");
+      await offerFile(await xlsxBlob(), baseFilename() + ".xlsx");
     });
   }
 
@@ -1371,13 +1561,69 @@
     return { meta, rows: out };
   }
 
+  /* ورقة بطريقة «بيانات الخطط» في ملف التسجيل اليومي: كل خطة تبدأ بـ«اسم/رقم المستوى:»، وبعد خمسة صفوف مقاديرها
+     (الحفظ والربط والكبرى: جزء، من، إلى). وخطة في أكثر من ورقة «… (١ من ٢)» تُجمع خطةً واحدة. */
+  const isDailyStart = (row) => norm(row && row[0]).replace(/\s/g, "").startsWith("اسم/رقمالمستوى");
+  const isDailySheet = (rows) => rows.some(isDailyStart);
+  // جزء ومن وإلى ← نص الخانة كما في الموقع
+  function dailyText(part, from, to) {
+    const num = (x) => {
+      const t = ASCII(norm(x));
+      return /^\d+$/.test(t) ? +t : null;
+    };
+    const a = num(from);
+    const b = num(to) == null ? a : num(to);
+    if (a == null) return "";
+    const p = ASCII(norm(part)).replace(/\s/g, "");
+    const two = /^(\d+)←(\d+)$/.exec(p);
+    if (two) return `${two[1]}/${a}←${two[2]}/${b}`;
+    const lv = /^\d+$/.test(p) ? +p : null;
+    // رجعت الصفحات في الجزء نفسه (آخر متن وأول الذي يليه)
+    if (b < a) return lv != null ? `${lv}/${a}←${lv}/${b}` : `${a}←${b}`;
+    return PlanCore.fmt(lv, a, b);
+  }
+  function parseDailySheets(sheets) {
+    const blocks = [];
+    for (const sh of sheets) {
+      sh.rows.forEach((row, r) => {
+        if (!isDailyStart(row)) return;
+        const name = norm((sh.rows[r + 1] || [])[3]);
+        const rows = [];
+        for (let m = 0; m < DAILY.max; m++) {
+          const c = sh.rows[r + 5 + m] || [];
+          const memo = dailyText(c[1], c[2], c[3]);
+          if (memo) rows.push({ memo, link: dailyText(c[4], c[5], c[6]) || "-", big: dailyText(c[7], c[8], c[9]) || "-", note: "" });
+        }
+        if (rows.length) blocks.push({ name, rows });
+      });
+    }
+    if (!blocks.length) return { meta: {}, rows: [] };
+    // الخطة الأولى، وما يليها من أجزائها «(٢ من ٣)»
+    const base = (n) => n.replace(/\s*\(\d+ من \d+\)$/, "");
+    const first = blocks[0];
+    const out = first.rows.slice();
+    if (/\(1 من \d+\)$/.test(first.name))
+      for (const bl of blocks.slice(1)) {
+        if (base(bl.name) !== base(first.name)) break;
+        out.push(...bl.rows);
+      }
+    return { meta: { name: base(first.name) }, rows: out };
+  }
+
   async function importFile(file) {
     const st = $("status");
     try {
       setStatus(st, "جارٍ قراءة الملف…", "busy");
       const isCsv = /\.csv$/i.test(file.name);
-      const rows = isCsv ? XlsxLite.readCsv(await file.text()) : await XlsxLite.read(await file.arrayBuffer());
-      const { meta, rows: plan } = parsePlanSheet(rows);
+      const sheets = isCsv ? [{ name: "", rows: XlsxLite.readCsv(await file.text()) }] : await XlsxLite.readAll(await file.arrayBuffer());
+      // جدول الخطة بالأيام كما يصدّره الموقع، وإلا أوراق بطريقة «بيانات الخطط»
+      let parsed = { meta: {}, rows: [] };
+      for (const sh of sheets.filter((x) => !isDailySheet(x.rows))) {
+        parsed = parsePlanSheet(sh.rows);
+        if (parsed.rows.length) break;
+      }
+      if (!parsed.rows.length) parsed = parseDailySheets(sheets.filter((x) => isDailySheet(x.rows)));
+      const { meta, rows: plan } = parsed;
       if (!plan.length) throw new Error("لم أجد عموداً بعنوان «الحفظ» ولا مقادير في الملف");
       const known = meta.name && (allTexts().concat(LEVEL_PLANS).find((t) => norm(t.name) === meta.name) || selectionByName(meta.name));
       const bad = known ? [] : plan.map((r, i) => (PlanCore.parseRange(r.memo) ? null : AR(i + 1))).filter(Boolean);
@@ -1945,6 +2191,8 @@
     review: { enabled: true, method: "levels", pages: 20, itemMode: "pages", itemValue: 20, self: true, repeat: true, mergeShort: true },
     show: { student: false, halaqa: false, dates: false, weekdays: [0, 1, 2, 3, 4] },
     notice: "",
+    // ملف اكسل: «simple» الجدول بالأيام وحده، و«daily» بطريقة التسجيل اليومي (للصق في «بيانات الخطط») ومعه الجدول بالأيام
+    excel: "simple",
   };
   let settings = clone(BASE_SETTINGS);
   let settingsStamp = "";
@@ -1980,6 +2228,7 @@
       weekdays: days && days.length ? days : s.show.weekdays,
     };
     s.notice = typeof g(o).notice === "string" ? g(o).notice.replace(/\r/g, "").trim().slice(0, 600) : "";
+    s.excel = g(o).excel === "daily" ? "daily" : "simple";
     return s;
   }
   function loadCachedSettings() {
@@ -2090,6 +2339,8 @@
       (w, i) => `<button type="button" class="chip" data-wd="${i}" aria-pressed="${st.show.weekdays.includes(i)}">${w}</button>`
     ).join("");
     $("dNotice").value = st.notice;
+    $("dExcelDaily").checked = st.excel === "daily";
+    $("dExcelSimple").checked = st.excel !== "daily";
   }
   function renderDefaultsAdmin() {
     fillDefaultsForm(settings);
@@ -2125,6 +2376,7 @@
         weekdays: [...$("dWeekdays").querySelectorAll('[aria-pressed="true"]')].map((b) => +b.dataset.wd),
       },
       notice: $("dNotice").value,
+      excel: $("dExcelDaily").checked ? "daily" : "simple",
     });
   }
   async function saveDefaults() {

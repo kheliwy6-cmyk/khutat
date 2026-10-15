@@ -108,7 +108,8 @@ const PlanCore = (() => {
      - في متن واحد أو متون متتالية من كتاب المستوى نفسه: «2/25-34» (تُتجاوز الصفحات بين المتون)
      - إذا رجعت الصفحات في المستوى نفسه (من آخر الأربعين إلى أول النواقض): «133-140+25-26»
      - إذا انتقل من مستوى إلى آخر: «1/258←2/82» (يُكتب السهم في وورد برمز Wingdings كالأصل) */
-  function fmtSpan(units, s, e) {
+  // صفحات units[s..e] قطعاً: كل قطعة في جزء واحد وصفحاتها متقدمة (تبدأ قطعة جديدة إذا رجعت الصفحات أو تغيّر الجزء)
+  function spanRuns(units, s, e) {
     const runs = [];
     for (let x = s; x <= e; x++) {
       const u = units[x];
@@ -116,16 +117,24 @@ const PlanCore = (() => {
       if (r && r.level === u.level && u.page > r.to) r.to = u.page;
       else runs.push({ level: u.level, from: u.page, to: u.page });
     }
+    return runs;
+  }
+  function fmtRuns(runs) {
+    if (!runs || !runs.length) return "";
     if (runs.length === 1) return fmt(runs[0].level, runs[0].from, runs[0].to);
     if (runs.every((r) => r.level === runs[0].level)) return runs.map((r) => fmt(null, r.from, r.to)).join("+");
     const a = runs[0];
     const b = runs[runs.length - 1];
     return `${fmt(a.level, a.from, a.from)}←${fmt(b.level, b.to, b.to)}`;
   }
+  function fmtSpan(units, s, e) {
+    return fmtRuns(spanRuns(units, s, e));
+  }
 
   function spanText(units, groups, i, j) {
     return fmtSpan(units, groups[i].s, groups[j].e - 1);
   }
+  const spanRunsG = (units, groups, i, j) => spanRuns(units, groups[i].s, groups[j].e - 1);
 
   // مجموعات الأيام الأصلية لمتن (لمتابعة الربط منه بالأيام)
   function dayGroups(units) {
@@ -154,7 +163,9 @@ const PlanCore = (() => {
     const startUnit = groups.map((g) => g.s);
     const on = !!(link && link.enabled);
     const text = groups.map(() => (on ? "-" : ""));
-    if (!link) return { text, startUnit };
+    // قطع صفحات كل خانة (لملف اكسل: الجزء ومن وإلى وعدد الصفحات)
+    const runs = groups.map(() => []);
+    if (!link) return { text, startUnit, runs };
     for (let n = 0; n < D; n++) {
       const gi = P0 + n;
       if (gi === 0) continue;
@@ -164,9 +175,12 @@ const PlanCore = (() => {
           ? G[Math.max(0, gi - Math.max(1, Math.round(link.days) || 1))].s
           : Math.max(0, endIdx - Math.max(1, Math.round(link.pages) || 1) + 1);
       startUnit[n] = startIdx - off;
-      if (on) text[n] = fmtSpan(all, startIdx, endIdx);
+      if (on) {
+        runs[n] = spanRuns(all, startIdx, endIdx);
+        text[n] = fmtRuns(runs[n]);
+      }
     }
-    return { text, startUnit };
+    return { text, startUnit, runs };
   }
 
   /* ===== المراجعة الكبرى =====
@@ -198,11 +212,15 @@ const PlanCore = (() => {
       for (const f of firsts) if (f.at <= u) id = f.id;
       return id;
     };
-    return partition(units, D, P).map((g) => ({
-      text: fmtSpan(units, g.s, g.e - 1),
-      starts: firsts.filter((f) => f.at >= g.s && f.at < g.e).map((f) => f.id),
-      last: textAt(g.e - 1),
-    }));
+    return partition(units, D, P).map((g) => {
+      const runs = spanRuns(units, g.s, g.e - 1);
+      return {
+        text: fmtRuns(runs),
+        runs,
+        starts: firsts.filter((f) => f.at >= g.s && f.at < g.e).map((f) => f.id),
+        last: textAt(g.e - 1),
+      };
+    });
   }
 
   function pagesBetween(groups, a, b) {
@@ -271,11 +289,12 @@ const PlanCore = (() => {
     };
     const D = groups.length;
     const out = new Array(D).fill("-");
+    const runs = groups.map(() => []);
     const starts = groups.map(() => []);
     const items = (review && Array.isArray(review.items) ? review.items : []).filter(
       (it) => it && (it.source === "self" || itemTexts(it, getText).length)
     );
-    if (!items.length) return { out, starts };
+    if (!items.length) return { out, starts, runs };
     let idx = 0;
     let started = false;
     let queue = null;
@@ -303,6 +322,7 @@ const PlanCore = (() => {
           }
           const c = queue.shift();
           out[n] = c.text;
+          runs[n] = c.runs;
           note(n, c.starts, c.last);
           produced = true;
           if (!queue.length) advance();
@@ -320,6 +340,7 @@ const PlanCore = (() => {
             it.mode === "days"
               ? selfDayChunks(groups, 0, passEnd, it.value).map(([a, b]) => ({
                   text: spanText(units, groups, a, b),
+                  runs: spanRunsG(units, groups, a, b),
                   starts: partsIn(groups[a].s, groups[b].e),
                   last: partAt(groups[b].e - 1),
                 }))
@@ -328,12 +349,14 @@ const PlanCore = (() => {
         if (queue) {
           const c = queue.shift();
           out[n] = c.text;
+          runs[n] = c.runs;
           note(n, c.starts, c.last);
           produced = true;
           if (!queue.length) advance();
         } else {
           const e = greedyEnd(groups, selfPtr, passEnd, Math.max(1, it.value || 20));
           out[n] = spanText(units, groups, selfPtr, e);
+          runs[n] = spanRunsG(units, groups, selfPtr, e);
           note(n, partsIn(groups[selfPtr].s, groups[e].e), partAt(groups[e].e - 1));
           produced = true;
           selfPtr = e + 1;
@@ -341,7 +364,7 @@ const PlanCore = (() => {
         }
       }
     }
-    return { out, starts };
+    return { out, starts, runs };
   }
 
   /* text: { id, days, segments?: [{id, days}] } — segments لخطة المستوى كاملاً (متونه بالترتيب)
@@ -379,15 +402,20 @@ const PlanCore = (() => {
       P,
       D,
       groups,
-      rows: groups.map((g, i) => ({
-        memo: fmtSpan(units, g.s, g.e - 1),
-        link: link.text[i],
-        big: rev ? rev.out[i] : "",
-        // اسم المتن الذي تبدأ مراجعته في هذا اليوم، في خانة الملاحظات
-        note: rev ? rev.starts[i].map(noteName).filter(Boolean).join("، ") : "",
-        // متون الحفظ في هذا اليوم (لعنوان الصفحة ورموز الاستماع)
-        texts: [...new Set([partOf(g.s), partOf(g.e - 1)])],
-      })),
+      rows: groups.map((g, i) => {
+        const memoRuns = spanRuns(units, g.s, g.e - 1);
+        return {
+          memo: fmtRuns(memoRuns),
+          link: link.text[i],
+          big: rev ? rev.out[i] : "",
+          // اسم المتن الذي تبدأ مراجعته في هذا اليوم، في خانة الملاحظات
+          note: rev ? rev.starts[i].map(noteName).filter(Boolean).join("، ") : "",
+          // متون الحفظ في هذا اليوم (لعنوان الصفحة ورموز الاستماع)
+          texts: [...new Set([partOf(g.s), partOf(g.e - 1)])],
+          // قطع صفحات كل خانة: [{level, from, to}] (لملف اكسل بطريقة التسجيل اليومي)
+          runs: { memo: memoRuns, link: link.runs[i], big: rev ? rev.runs[i] || [] : [] },
+        };
+      }),
     };
   }
 
@@ -401,7 +429,7 @@ const PlanCore = (() => {
     };
   }
 
-  return { toAscii, toArabicDigits, parseRange, fmt, fmtSpan, buildUnits, partition, makePlan, stats };
+  return { toAscii, toArabicDigits, parseRange, fmt, fmtSpan, fmtRuns, spanRuns, buildUnits, partition, makePlan, stats };
 })();
 
 if (typeof module !== "undefined") module.exports = PlanCore;
