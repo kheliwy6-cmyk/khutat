@@ -308,6 +308,9 @@ input[type="range"] {
   align-items: center;
   gap: 6px 8px;
 }
+.check[hidden] {
+  display: none;
+}
 .check input[type="checkbox"],
 .check input[type="radio"] {
   width: 18px;
@@ -1401,6 +1404,17 @@ a.secondary {
 a.link-btn {
   font-size: 0.86rem;
 }
+/* ---------- إضافة الخطة إلى ملف الحلقة في Google Sheets ---------- */
+.sheets-help {
+  margin-top: 12px;
+}
+.sheets-help p {
+  margin: 6px 0;
+}
+.sheets-help[hidden] {
+  display: none;
+}
+
 /* ---------- إعلان الصفحة الرئيسية، والإعدادات التلقائية ---------- */
 .site-notice {
   margin: 0 0 14px;
@@ -1437,6 +1451,66 @@ a.link-btn {
 .defaults-form .field-title {
   margin: 4px 0 0;
   font-size: 0.92rem;
+}
+
+/* المستويات في المراجعة، والإجازات */
+.level-pick {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 6px;
+}
+.level-pick .field-title {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.level-pick .link-btn {
+  justify-self: start;
+  font-size: 0.86rem;
+}
+.holidays {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.holidays li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+.holidays .hol-label {
+  /* لا يعرّض الخانةُ القائمةَ في الجوال: عرضها من المساحة المتاحة */
+  flex: 1 1 14em;
+  width: 0;
+  min-width: 0;
+  padding: 4px 8px;
+}
+.holidays .hol-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.holidays select {
+  width: auto;
+  padding: 3px 6px;
+}
+.holidays .hint {
+  flex-basis: 100%;
+}
+.holidays li.hint {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+#dHolidayAdd {
+  justify-self: start;
 }
 
 /* ---------- لوحة التحكم: الخطط الجاهزة والمتون ---------- */
@@ -1688,12 +1762,23 @@ a.link-btn {
               <button type="button" class="link-btn" id="fillPrev">كل المتون التي قبله</button>
             </div>
             <div class="check">
+              <input type="checkbox" id="reviewCont" checked>
+              <label for="reviewCont">مراجعة متصلة: لا يقف يوم المراجعة عند نهاية متن قبل</label>
+              <input id="reviewMin" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="أقل عدد صفحات في يوم المراجعة">
+              <span class="sub-row">صفحة، بل يكمل من المتن الذي يليه</span>
+            </div>
+            <div class="check" id="mergeShortRow">
               <input type="checkbox" id="mergeShort" checked>
               <label for="mergeShort">المتون الأقل من ٢٠ صفحة تُراجَع معاً (كالنواقض والقواعد)</label>
             </div>
           </div>
           <div class="review-body" id="levelsBody" hidden>
-            <p class="hint">كما في خطط المستويات: تبدأ من أول متن المستوى الأول، ثم متون كل مستوى بترتيب صفحاتها، حتى ما قبل مستوى الخطة.</p>
+            <p class="hint">كما في خطط المستويات: تبدأ من أول متن المستوى الأول، ثم متون كل مستوى بترتيب صفحاتها. الأصل ما قبل مستوى الخطة، ولك أن تختار المستويات ولو بعده.</p>
+            <div class="level-pick">
+              <p class="field-title" id="levelChipsLabel">المستويات في المراجعة</p>
+              <div class="chips" id="levelChips" role="group" aria-labelledby="levelChipsLabel"></div>
+              <button type="button" class="link-btn" id="levelChipsReset" hidden>العودة إلى ما قبل مستوى الخطة</button>
+            </div>
             <div class="l1-box" id="revL1">
               <div class="level-field">
                 <label for="revEdition">المستوى الأول: طبعة المختصر</label>
@@ -1772,7 +1857,15 @@ a.link-btn {
             <button type="button" class="secondary" id="exportXlsx">تصدير اكسل</button>
             <button type="button" class="secondary" id="importBtn">رفع خطة من اكسل</button>
             <a class="secondary wa" id="shareWa" href="#" target="_blank" rel="noopener" hidden>إرسال بالواتساب</a>
+            <button type="button" class="secondary" id="copyLink" hidden>نسخ رابط الخطة</button>
           </div>
+          <details class="howto sheets-help" id="sheetsHelp" hidden>
+            <summary>إضافة الخطة إلى ملف الحلقة في Google Sheets</summary>
+            <p><b>لكل خطة:</b> اضغط «نسخ رابط الخطة»، ثم في ملف الحلقة: قائمة «الخطط العلمية» ← «إضافة خطة من الموقع…» والصق الرابط؛ فتُكتب الخطة في أول خطة فارغة في ورقة «بيانات الخطط»، وتظهر في «اختر خطة المستوى» في بطاقة الطالب.</p>
+            <p><b>مرة واحدة لكل ملف</b> (لتظهر القائمة): افتح ملف الحلقة ← «الإضافات» (Extensions) ← «Apps Script»، واحذف ما في المحرر والصق النص البرمجي، ثم احفظ وأعد فتح الملف. وأول مرة يطلب Google الإذن: Continue ← اختر حسابك ← Advanced ← Go to … ← Allow. (النص لا يقرأ إلا الخطة من الموقع، ولا يكتب إلا في هذا الملف.)</p>
+            <button type="button" class="secondary" id="copyScript">نسخ النص البرمجي</button>
+            <p class="status" id="sheetsStatus" role="status" aria-live="polite"></p>
+          </details>
         </div>
         <input type="file" id="importFile" accept=".xlsx,.csv" hidden>
         <p class="status" id="status" role="status" aria-live="polite"></p>
@@ -1876,7 +1969,11 @@ a.link-btn {
         </div>
         <div class="check"><input type="checkbox" id="dRevSelf"><label for="dRevSelf">وفي آخر الدورة ما حُفظ من المتن نفسه</label></div>
         <div class="check"><input type="checkbox" id="dRevRepeat"><label for="dRevRepeat">إذا انتهت الدورة تعود إلى أولها</label></div>
-        <div class="check"><input type="checkbox" id="dRevMerge"><label for="dRevMerge">المتون الأقل من ٢٠ صفحة تُراجَع معاً (في القائمة)</label></div>
+        <div class="check">
+          <input type="checkbox" id="dRevCont"><label for="dRevCont">مراجعة متصلة في القائمة: لا يقف يوم المراجعة عند نهاية متن قبل</label>
+          <input id="dRevMin" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="أقل عدد صفحات في يوم المراجعة"><span class="sub-row">صفحة</span>
+        </div>
+        <div class="check"><input type="checkbox" id="dRevMerge"><label for="dRevMerge">المتون الأقل من ٢٠ صفحة تُراجَع معاً (في القائمة، إذا لم تكن المراجعة متصلة)</label></div>
 
         <h3 class="admin-level">ما يظهر في الخطة</h3>
         <div class="check"><input type="checkbox" id="dStudent"><label for="dStudent">كتابة اسم الطالب مفعّلة</label></div>
@@ -1884,6 +1981,11 @@ a.link-btn {
         <div class="check"><input type="checkbox" id="dDates"><label for="dDates">مدة الخطة بالهجري مفعّلة (تبدأ من يوم فتح الصفحة)</label></div>
         <p class="field-title">أيام الدراسة في الأسبوع</p>
         <div class="weekdays" id="dWeekdays" role="group" aria-label="أيام الدراسة في الأسبوع"></div>
+
+        <h3 class="admin-level">أيام لا تُحتسب في الخطة</h3>
+        <p class="hint">إجازات وفترات تُتخطى عند كتابة تواريخ الخطة ومدتها بالهجري.</p>
+        <ol class="holidays" id="dHolidays"></ol>
+        <button type="button" class="secondary" id="dHolidayAdd">+ إضافة فترة</button>
 
         <h3 class="admin-level">ملف اكسل</h3>
         <div class="check"><input type="radio" name="dExcel" id="dExcelSimple" value="simple"><label for="dExcelSimple">جدول الخطة بالأيام</label></div>
@@ -2237,9 +2339,9 @@ const TEXTS = [
  },
  {
   "id": "shurut",
-  "name": "شروط الصلاة وآدابها وأركانها",
+  "name": "شروط الصلاة وأركانها وواجباتها",
   "level": 3,
-  "title": "خطة المستوى الثالث – شروط الصلاة وآدابها وأركانها.",
+  "title": "خطة المستوى الثالث – شروط الصلاة وأركانها وواجباتها.",
   "qr": "shurut",
   "days": [
    "3/43-44",
@@ -2851,6 +2953,7 @@ const LIBRARY = {"ready": [{"title": "الأذكار والآداب", "level": 1
 const LIBRARY_EMBED = {};
 const WATERMARK_JPG = "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";
 
+const SHEETS_SCRIPT = "/** @OnlyCurrentDoc */\n/**\n * الخطط العلمية — إضافة خطة من الموقع إلى ملف التسجيل اليومي (ورقة «بيانات الخطط»).\n *\n * التثبيت مرة واحدة لكل ملف: الإضافات ← Apps Script، الصق هذا النص مكان ما في المحرر، احفظ، ثم أعد فتح الملف.\n * الاستعمال: قائمة «الخطط العلمية» ← «إضافة خطة من الموقع…»، والصق رابط الخطة الذي يعطيه الموقع بعد اعتمادها.\n * تُكتب الخطة في أول خطة فارغة (عدد مقاديرها ٠): اسم المستوى واسم المتن، والمقادير (جزء/من/إلى وتجاوز الإجمالي)؛\n * ولا يُغيَّر شيء غيرها في الملف (الصيغ والتنسيق يبقيان كما هما)، ولا يصل النص إلى غير هذا الملف.\n */\nvar KHUTAT = { project: 'khutat-d0f01', sheet: 'بيانات الخطط', block: 106, max: 100, plans: 30 };\n\nfunction onOpen() {\n  SpreadsheetApp.getUi()\n    .createMenu('الخطط العلمية')\n    .addItem('إضافة خطة من الموقع…', 'khutatAddPlan')\n    .addToUi();\n}\n\n// قيمة مستند Firestore (REST) ← قيمة JavaScript\nfunction khutatDecode(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(khutatDecode);\n  if ('mapValue' in v) {\n    var o = {};\n    var f = v.mapValue.fields || {};\n    for (var k in f) o[k] = khutatDecode(f[k]);\n    return o;\n  }\n  return null;\n}\n\n// رقم الخطة من رابطها («…#plan=ABC») أو الرقم وحده\nfunction khutatPlanId(text) {\n  var s = String(text || '').trim();\n  var m = /plan=([A-Za-z0-9_-]+)/.exec(s) || /^([A-Za-z0-9_-]{6,})$/.exec(s);\n  return m ? m[1] : null;\n}\n\n// الخطة المعتمدة في الموقع ← { level, text, rows: [\"جزء|من|إلى|…\" لكل يوم] }\nfunction khutatFetch(id) {\n  var url = 'https://firestore.googleapis.com/v1/projects/' + KHUTAT.project + '/databases/(default)/documents/plans/' + id;\n  var r = UrlFetchApp.fetch(url, { muteHttpExceptions: true });\n  if (r.getResponseCode() === 404) throw new Error('لم أجد هذه الخطة في الموقع؛ ربما حُذفت.');\n  if (r.getResponseCode() !== 200) throw new Error('تعذّر الاتصال بالموقع (' + r.getResponseCode() + ')؛ أعد المحاولة.');\n  var doc = JSON.parse(r.getContentText());\n  var d = khutatDecode((doc.fields || {}).daily);\n  if (!d || !d.rows || !d.rows.length) throw new Error('هذه الخطة اعتُمدت قبل إضافة هذه الميزة؛ افتحها في الموقع واعتمدها مرة أخرى، ثم أعد المحاولة.');\n  return d;\n}\n\n// أول خطط فارغة متتالية بعدد k (العمود U في «بيانات الخطط» فيه عدد مقادير كل خطة)\nfunction khutatFreeSlot(sh, k) {\n  var counts = sh.getRange(2, 21, KHUTAT.plans, 1).getValues().map(function (r) { return r[0]; });\n  for (var n = 1; n + k - 1 <= KHUTAT.plans; n++) {\n    var ok = true;\n    for (var j = 0; j < k; j++) if (!(counts[n - 1 + j] === 0 || counts[n - 1 + j] === '')) ok = false;\n    if (ok) return n;\n  }\n  return -1;\n}\n\nfunction khutatCell(v) {\n  if (v === undefined || v === null || v === '') return '';\n  return /^\\d+$/.test(v) ? Number(v) : v;\n}\n\n// تكتب الخطة في الخطة رقم slot وما يليها؛ وتعيد عدد الخطط التي كُتبت\nfunction khutatWrite(sh, d, slot) {\n  var K = Math.ceil(d.rows.length / KHUTAT.max);\n  for (var k = 0; k < K; k++) {\n    var r0 = KHUTAT.block * (slot + k - 1) + 1;\n    var part = d.rows.slice(k * KHUTAT.max, (k + 1) * KHUTAT.max);\n    sh.getRange(r0, 4).setValue(d.level);\n    sh.getRange(r0 + 1, 4).setValue(K > 1 ? d.text + ' (' + (k + 1) + ' من ' + K + ')' : d.text);\n    var values = [];\n    for (var m = 0; m < KHUTAT.max; m++) {\n      var p = part[m] ? String(part[m]).split('|') : [];\n      var row = [];\n      for (var j = 0; j < 12; j++) row.push(khutatCell(p[j]));\n      values.push(row);\n    }\n    sh.getRange(r0 + 5, 2, KHUTAT.max, 12).setValues(values);\n  }\n  return K;\n}\n\nfunction khutatAddPlan() {\n  var ui = SpreadsheetApp.getUi();\n  var ans = ui.prompt('إضافة خطة من الموقع', 'الصق رابط الخطة (يظهر في الموقع بعد اعتمادها، وفي رسالة الواتساب):', ui.ButtonSet.OK_CANCEL);\n  if (ans.getSelectedButton() !== ui.Button.OK) return;\n  var id = khutatPlanId(ans.getResponseText());\n  if (!id) return ui.alert('لم أجد رقم الخطة في هذا الرابط.');\n  var sh = SpreadsheetApp.getActive().getSheetByName(KHUTAT.sheet);\n  if (!sh) return ui.alert('لم أجد ورقة «' + KHUTAT.sheet + '» في هذا الملف.');\n  var d;\n  try {\n    d = khutatFetch(id);\n  } catch (e) {\n    return ui.alert(e.message);\n  }\n  var K = Math.ceil(d.rows.length / KHUTAT.max);\n  var slot = khutatFreeSlot(sh, K);\n  if (slot < 0) return ui.alert(K > 1 ? 'لا توجد ' + K + ' خطط فارغة متتالية في «' + KHUTAT.sheet + '».' : 'لا توجد خطة فارغة في «' + KHUTAT.sheet + '».');\n  var where = K > 1 ? 'الخطط ' + slot + ' إلى ' + (slot + K - 1) : 'الخطة ' + slot;\n  var n = d.rows.length;\n  var days = n === 1 ? 'يوم واحد' : n === 2 ? 'يومان' : n % 100 >= 3 && n % 100 <= 10 ? n + ' أيام' : n + ' يوماً';\n  if (ui.alert('إضافة خطة', 'تُكتب «' + d.text + '» (' + days + ') في ' + where + '. أتابع؟', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;\n  khutatWrite(sh, d, slot);\n  SpreadsheetApp.flush();\n  ui.alert('أُضيفت الخطة في ' + where + '. اخترها من «اختر خطة المستوى» في بطاقة الطالب.');\n}\n";
 const SITE = {"standalone": true, "firebase": {"apiKey": "AIzaSyDa_2yztq-mdOa7-n9Vs4HDmOIJLNkt7rc", "authDomain": "khutat-d0f01.firebaseapp.com", "projectId": "khutat-d0f01", "storageBucket": "khutat-d0f01.firebasestorage.app", "messagingSenderId": "541432838268", "appId": "1:541432838268:web:f11a5b46e69d7284ebf1f9"}, "seed": null};
 
 </script>
@@ -3079,6 +3182,77 @@ const PlanCore = (() => {
     });
   }
 
+  /* مراجعة متصلة لمتون متتالية (في «متون أختارها بالترتيب»): كل يوم نحو مقدار المتن الذي يبدأ فيه اليوم من الصفحات،
+     ولا يقف اليوم عند نهاية متن إلا إذا بلغ أقل عدد الصفحات (min) أو قاربه، وإلا أكمل من المتن الذي يليه؛
+     ويقف عند نهاية متن قريبة من المقدار (حتى خُمسه زيادة) فلا تبقى من المتن صفحات يسيرة.
+     الصفحات تُعدّ بأرقامها كما يراها الطالب: «٢٥-٤٤» عشرون صفحة ولو لم تكن كلها من المتون (كصفحات العناوين).
+     parts: [{ids:[…], value}] بالترتيب */
+  function streamChunks(parts, min, getText) {
+    const units = [];
+    const firsts = [];
+    const ends = new Set();
+    const target = [];
+    for (const p of parts) {
+      for (const t of (p.ids || []).map((id) => getText(id)).filter(Boolean)) {
+        firsts.push({ id: t.id, at: units.length });
+        for (const u of buildUnits(t.days)) {
+          units.push({ level: u.level, page: u.page });
+          target.push(Math.max(1, Math.round(p.value) || 1));
+        }
+        ends.add(units.length - 1);
+      }
+    }
+    const P = units.length;
+    if (!P) return [];
+    // رقم كل صفحة في العدّ المتصل: ما بين صفحتين متتاليتين من كتاب واحد يُعدّ بأرقامه
+    const pos = new Array(P);
+    for (let x = 0; x < P; x++) {
+      const a = units[x - 1];
+      const u = units[x];
+      pos[x] = x === 0 ? 1 : pos[x - 1] + (a.level === u.level && u.page > a.page ? u.page - a.page : 1);
+    }
+    const len = (s, e) => pos[e] - pos[s] + 1;
+    const M = Math.max(1, Math.round(min) || 1);
+    const chunks = [];
+    let s = 0;
+    while (s < P) {
+      const T = target[s];
+      // آخر صفحة لا يزيد اليوم عندها على المقدار
+      let e0 = s;
+      while (e0 + 1 < P && len(s, e0 + 1) <= T) e0++;
+      // نهاية متن قريبة من المقدار: لا يقل اليوم عندها عن أقل عدد الصفحات إلا يسيراً (عُشره)، ولا يزيد على المقدار إلا خُمسه
+      const lo = Math.max(1, M - Math.floor(M / 10));
+      const hi = T + Math.floor(T / 5);
+      let e = e0;
+      let best = -1;
+      for (let b = s; b < P && len(s, b) <= hi; b++) {
+        if (!ends.has(b) || len(s, b) < lo) continue;
+        if (best < 0 || Math.abs(len(s, b) - T) < Math.abs(len(s, best) - T)) best = b;
+      }
+      if (best >= 0) e = best;
+      chunks.push([s, e]);
+      s = e + 1;
+    }
+    // آخر القائمة: الجزء الأخير اليسير (أقل من أقل عدد الصفحات ومن ثلث المقدار) يُضم إلى ما قبله
+    if (chunks.length > 1) {
+      const last = chunks[chunks.length - 1];
+      const r = len(last[0], last[1]);
+      if (r < M && r <= Math.floor(target[last[0]] / 3)) {
+        chunks.pop();
+        chunks[chunks.length - 1][1] = last[1];
+      }
+    }
+    const textAt = (u) => {
+      let id = firsts.length ? firsts[0].id : null;
+      for (const f of firsts) if (f.at <= u) id = f.id;
+      return id;
+    };
+    return chunks.map(([a, b]) => {
+      const runs = spanRuns(units, a, b);
+      return { text: fmtRuns(runs), runs, starts: firsts.filter((f) => f.at >= a && f.at <= b).map((f) => f.id), last: textAt(b) };
+    });
+  }
+
   function pagesBetween(groups, a, b) {
     let s = 0;
     for (let x = a; x <= b; x++) s += groups[x].pages;
@@ -3148,7 +3322,7 @@ const PlanCore = (() => {
     const runs = groups.map(() => []);
     const starts = groups.map(() => []);
     const items = (review && Array.isArray(review.items) ? review.items : []).filter(
-      (it) => it && (it.source === "self" || itemTexts(it, getText).length)
+      (it) => it && (it.source === "self" || (it.source === "stream" ? (it.parts || []).some((p) => itemTexts({ ids: p.ids }, getText).length) : itemTexts(it, getText).length))
     );
     if (!items.length) return { out, starts, runs };
     let idx = 0;
@@ -3173,8 +3347,12 @@ const PlanCore = (() => {
         const it = items[idx];
         if (it.source !== "self") {
           if (!started) {
-            queue = reviewChunks(itemTexts(it, getText), it.mode, it.value);
+            queue = it.source === "stream" ? streamChunks(it.parts, it.min, getText) : reviewChunks(itemTexts(it, getText), it.mode, it.value);
             started = true;
+          }
+          if (!queue.length) {
+            advance();
+            continue;
           }
           const c = queue.shift();
           out[n] = c.text;
@@ -3285,7 +3463,7 @@ const PlanCore = (() => {
     };
   }
 
-  return { toAscii, toArabicDigits, parseRange, fmt, fmtSpan, fmtRuns, spanRuns, buildUnits, partition, makePlan, stats };
+  return { toAscii, toArabicDigits, parseRange, fmt, fmtSpan, fmtRuns, spanRuns, buildUnits, partition, makePlan, stats, streamChunks };
 })();
 
 if (typeof module !== "undefined") module.exports = PlanCore;
@@ -3329,21 +3507,24 @@ const Hijri = (() => {
   function monthLength(y, m) {
     return toGregorian(y, m, 30) ? 30 : 29;
   }
-  // أيام الدراسة بدءاً من start (أيام الأسبوع: ٠ الأحد … ٦ السبت)
-  function studyDates(start, weekdays, count) {
+  // أيام الدراسة بدءاً من start (أيام الأسبوع: ٠ الأحد … ٦ السبت)، دون الأيام التي يستثنيها skip (الإجازات)
+  function studyDates(start, weekdays, count, skip) {
     const set = new Set(weekdays);
     const out = [];
     if (!set.size) return out;
-    for (let i = 0; out.length < count && i < count * 7 + 14; i++) {
+    for (let i = 0; out.length < count && i < count * 7 + 14 + 800; i++) {
       const dt = new Date(start.getTime() + i * DAY);
-      if (set.has(dt.getUTCDay())) out.push(dt);
+      if (set.has(dt.getUTCDay()) && !(skip && skip(dt))) out.push(dt);
     }
     return out;
   }
-  function countStudyDays(start, end, weekdays) {
+  function countStudyDays(start, end, weekdays, skip) {
     const set = new Set(weekdays);
     let n = 0;
-    for (let t = start.getTime(); t <= end.getTime(); t += DAY) if (set.has(new Date(t).getUTCDay())) n++;
+    for (let t = start.getTime(); t <= end.getTime(); t += DAY) {
+      const dt = new Date(t);
+      if (set.has(dt.getUTCDay()) && !(skip && skip(dt))) n++;
+    }
     return n;
   }
   // صيغة التخزين: السنة/الشهر/اليوم
@@ -4929,7 +5110,7 @@ const XlsxLite = (() => {
         s.reviewItems = Object.assign(s.reviewItems || {}, { [state.text.id]: state.review.items });
       }
       // طريقة المراجعة وإعداد المستويات عامة لكل المتون
-      s.review2 = { method: state.review.method, repeat: state.review.repeat, mergeShort: state.review.mergeShort, levels: state.review.levels };
+      s.review2 = { method: state.review.method, repeat: state.review.repeat, mergeShort: state.review.mergeShort, cont: state.review.cont, min: state.review.min, levels: state.review.levels };
       s.level1 = state.level1;
       delete s.reviews; // حفظ قديم كانت المراجعة فيه تبدأ بالمتن نفسه
       s.link = state.link;
@@ -5342,6 +5523,8 @@ const XlsxLite = (() => {
     const before = ents.slice(0, k).filter((e) => e.mode === "done");
     if (before.length) return getText(before[before.length - 1].id);
     const first = t.isLevel ? getText(t.parts[0]) : getText(baseOf(t));
+    // الأذكار والآداب أول الخطة: يتابع الربط من المختصر بالطبعة المختارة (ويُختار غيرها من القائمة)
+    if (first && first.id === "adhkar") return getText(state.level1.edition);
     if (!first || first.level <= 1) return null;
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
     // المتون الإضافية بعد المستوى السادس، وكل منها مستقل عن غيره
@@ -5528,28 +5711,35 @@ const XlsxLite = (() => {
   }
   function validReview(r) {
     if (!r || !Array.isArray(r.items)) return null;
-    const excl = excludedIds();
+    // متون القائمة يختارها المستخدم بحرية (ولو لم تُعلَّم في الخطة)، إلا متن الخطة نفسه فهو «المتن نفسه»
     const own = new Set(state.text.isLevel ? [] : ownIds(state.text));
     const items = r.items
       .filter(
         (it) =>
           it &&
-          (it.source === "self" || (getText(it.source) && it.source !== state.text.id && !own.has(it.source) && !excl.has(it.source))) &&
+          (it.source === "self" || (getText(it.source) && it.source !== state.text.id && !own.has(it.source))) &&
           (it.mode === "pages" || it.mode === "days")
       )
       .slice(0, MAX_REVIEW)
       .map((it) => ({ source: it.source, mode: it.mode, value: clampInt(it.value, 1, 999, 20) }));
     const lv = r.levels || {};
+    // المستويات المختارة للمراجعة (للمستوى الذي اختيرت له)، وإلا فالأصل: ما قبل مستوى الخطة
+    const chosen = Array.isArray(lv.levels) ? [...new Set(lv.levels.map(Number).filter((l) => Number.isInteger(l) && l >= 1 && l <= 7))].sort() : null;
     return {
       method: r.method === "levels" ? "levels" : "list",
       items,
       repeat: r.repeat !== false,
       mergeShort: r.mergeShort !== false,
+      // المراجعة المتصلة في القائمة، وأقل عدد صفحات يقف عنده يوم المراجعة عند نهاية متن
+      cont: typeof r.cont === "boolean" ? r.cont : settings.review.cont,
+      min: clampInt(r.min, 1, 999, settings.review.min),
       levels: {
         pages: clampInt(lv.pages, 1, 999, 20),
         self: lv.self !== false,
         startOn: !!lv.startOn,
         start: clampInt(lv.start, 1, 7, 2),
+        levels: chosen,
+        for: chosen ? clampInt(lv.for, 0, 7, 0) : null,
       },
     };
   }
@@ -5562,6 +5752,8 @@ const XlsxLite = (() => {
       method: g.method || r.method,
       repeat: typeof g.repeat === "boolean" ? g.repeat : r.repeat,
       mergeShort: typeof g.mergeShort === "boolean" ? g.mergeShort : r.mergeShort,
+      cont: typeof g.cont === "boolean" ? g.cont : r.cont,
+      min: typeof g.min === "number" ? g.min : r.min,
       levels: g.levels || (prefs.review && prefs.review.levels) || { pages: r.pages, self: r.self },
       items: Array.isArray(saved) ? saved : defaultItems(t),
     });
@@ -5571,7 +5763,7 @@ const XlsxLite = (() => {
   // (ومن مستواها: المعلَّم هو الخطة نفسها، وغير المعلَّم لا يُراجَع؛ إلا في الخطة الجاهزة لمتن واحد)
   function previousTexts(t) {
     const own = new Set(ownIds(t));
-    const l1 = t.custom || t.level > 1 ? level1Ids() : t.id === "adhkar" && state.prevInLevel ? [state.level1.edition] : [];
+    const l1 = t.custom || t.level > 1 ? level1Ids() : baseOf(t) === "adhkar" ? [state.level1.edition] : [];
     const out = l1.filter((id) => !own.has(id)).map(getText);
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
     const upto =
@@ -5598,11 +5790,36 @@ const XlsxLite = (() => {
   }
 
   // تسلسل «على حسب المستويات» لمتن الخطة
+  // المستويات التي فيها متون (للاختيار في المراجعة)
+  const reviewLevels = () => [1, 2, 3, 4, 5, 6, 7].filter((l) => TEXTS.some((x) => x.level === l));
+  // الأصل في المراجعة على حسب المستويات: ما قبل مستوى الخطة
+  const defaultReviewLevels = (t) => {
+    const L = t.custom ? 7 : t.level;
+    return reviewLevels().filter((l) => l < Math.min(L, 7));
+  };
+  const chosenLevels = (t, lv) => (Array.isArray(lv.levels) && lv.for === (t.custom ? 7 : t.level) ? lv.levels : null);
   function levelSequence(t, lv) {
     const L = t.custom ? 7 : t.level;
     let seq = [];
     const own = new Set(ownIds(t));
-    if (L > 1) {
+    const firstPage = (x) => PlanCore.parseRange(x.days[0]).a;
+    // متون كتاب المستوى بترتيب صفحاتها، ثم الكتب المستقلة (كبلوغ المرام والزاد) بترتيب البرنامج
+    const inBooklet = (x) => PlanCore.parseRange(x.days[0]).level != null;
+    const order = (a, b) => inBooklet(b) - inBooklet(a) || (inBooklet(a) ? firstPage(a) - firstPage(b) : TEXTS.indexOf(a) - TEXTS.indexOf(b));
+    const chosen = chosenLevels(t, lv);
+    if (chosen) {
+      // مستويات اختارها المستخدم بحرية (ولو بعد مستوى الخطة): متونها كلها إلا متون الخطة نفسها
+      for (const lvl of reviewLevels()) {
+        if (!chosen.includes(lvl)) continue;
+        let texts = lvl === 1 ? level1Ids().map(getText) : TEXTS.filter((x) => x.level === lvl);
+        texts = texts.filter((x) => x && !own.has(x.id));
+        // خطة فيها المختصر: لا تُراجَع طبعته الأخرى
+        if (lvl === 1 && MUKHTASAR_EDITIONS.some((id) => own.has(id))) texts = texts.filter((x) => !MUKHTASAR_EDITIONS.includes(x.id));
+        if (!texts.length) continue;
+        if (lvl > 1) texts.sort(order);
+        seq.push({ label: LEVEL_NAMES[lvl], names: texts.map((x) => AR(x.name)), ids: texts.map((x) => x.id), lvl });
+      }
+    } else if (L > 1) {
       const ids = level1Ids().filter((id) => !own.has(id));
       if (ids.length) seq.push({ label: LEVEL_NAMES[1], names: ids.map((id) => AR(getText(id).name)), ids, lvl: 1 });
     } else if (!t.isLevel && t.id === "adhkar" && state.prevInLevel) {
@@ -5610,11 +5827,7 @@ const XlsxLite = (() => {
       const e = state.level1.edition;
       seq.push({ label: AR(getText(e).name), ids: [e], lvl: 1 });
     }
-    const firstPage = (x) => PlanCore.parseRange(x.days[0]).a;
-    // متون كتاب المستوى بترتيب صفحاتها، ثم الكتب المستقلة (كبلوغ المرام والزاد) بترتيب البرنامج
-    const inBooklet = (x) => PlanCore.parseRange(x.days[0]).level != null;
-    const order = (a, b) => inBooklet(b) - inBooklet(a) || (inBooklet(a) ? firstPage(a) - firstPage(b) : TEXTS.indexOf(a) - TEXTS.indexOf(b));
-    for (let lvl = 2; lvl <= Math.min(L, 6); lvl++) {
+    for (let lvl = 2; lvl <= Math.min(L, 6) && !chosen; lvl++) {
       let texts = TEXTS.filter((x) => x.level === lvl);
       const partial = lvl === L;
       // مستوى الخطة: ما عُلِّم منه هو «المتن نفسه»، وغير المعلَّم لا يُراجَع (إلا في الخطة الجاهزة لمتن واحد)
@@ -5659,9 +5872,23 @@ const XlsxLite = (() => {
     }
     return out;
   }
+  // المراجعة المتصلة: المتون المتتالية بالصفحات في القائمة تُراجَع متصلة، فلا يقف يوم المراجعة عند نهاية متن قبل أقل عدد الصفحات
+  function streamItems(items, min) {
+    const out = [];
+    for (const it of items) {
+      const flow = it.source !== "self" && it.mode === "pages";
+      const last = out[out.length - 1];
+      if (flow && last && last.source === "stream") last.parts.push({ ids: [it.source], value: it.value });
+      else out.push(flow ? { source: "stream", parts: [{ ids: [it.source], value: it.value }], min } : it);
+    }
+    return out;
+  }
   function planReview() {
     const r = state.review;
-    if (r.method !== "levels") return { items: r.mergeShort ? mergeShortItems(r.items) : r.items, repeat: r.repeat };
+    if (r.method !== "levels") {
+      if (r.cont) return { items: streamItems(r.items, r.min), repeat: r.repeat };
+      return { items: r.mergeShort ? mergeShortItems(r.items) : r.items, repeat: r.repeat };
+    }
     const v = r.levels.pages;
     const items = levelSequence(state.text, r.levels).map((s) =>
       s.self ? { source: "self", mode: "pages", value: v } : { source: "group", ids: s.ids, mode: "pages", value: v }
@@ -5672,10 +5899,10 @@ const XlsxLite = (() => {
   function reviewOptions(selected) {
     let html = "";
     const groups = {};
-    const excl = excludedIds();
+    // كل المتون (وفيها طبعتا المختصر) إلا متن الخطة نفسه
     const own = new Set(ownIds(state.text));
     allTexts().forEach((t) => {
-      if (t.id !== state.text.id && !own.has(t.id) && !excl.has(t.id)) (groups[t.level] = groups[t.level] || []).push(t);
+      if (t.id !== state.text.id && !own.has(t.id)) (groups[t.level] = groups[t.level] || []).push(t);
     });
     for (const lvl of Object.keys(groups)) {
       html += `<optgroup label="${LEVEL_NAMES[lvl] || "خطط مرفوعة"}">`;
@@ -5695,6 +5922,9 @@ const XlsxLite = (() => {
         : `ما حُفظ من متن الخطة قبل الربط، يُقسَّم في كل دورة على ${daysAfter(it.value)}.`;
     }
     const P = pagesOf(it.source);
+    // المراجعة المتصلة: المتن القصير يُراجَع مع غيره، والطويل بمقداره في اليوم
+    if (it.mode === "pages" && state.review.cont)
+      return P < state.review.min ? `${pagesWord(P)} من أول صفحة، تُراجَع مع غيرها في يوم واحد.` : `${pagesWord(P)} من أول صفحة، بنحو ${pagesAfter(it.value)} في اليوم.`;
     if (it.mode === "pages") return `${pagesWord(P)} من أول صفحة، تُراجَع في ${daysAfter(Math.min(Math.ceil(P / it.value), P))}.`;
     return `${pagesWord(P)} من أول صفحة، بنحو ${pagesAfter(Math.max(1, Math.round(P / Math.min(it.value, P))))} في اليوم.`;
   }
@@ -5707,6 +5937,10 @@ const XlsxLite = (() => {
     $("levelsBody").hidden = !levels;
     $("reviewRepeat").checked = state.review.repeat;
     $("mergeShort").checked = state.review.mergeShort;
+    $("reviewCont").checked = state.review.cont;
+    if (document.activeElement !== $("reviewMin")) $("reviewMin").value = AR(state.review.min);
+    $("reviewMin").disabled = !state.review.cont;
+    $("mergeShortRow").hidden = state.review.cont;
     $("repeatLabel").textContent = levels ? "إذا انتهت الدورة تعود إلى أولها" : "إذا انتهت القائمة تعود إلى أولها";
     if (levels) renderLevels();
     else renderReviewList();
@@ -5715,9 +5949,10 @@ const XlsxLite = (() => {
   function renderLevel1Controls() {
     const c = state.level1;
     const t = state.text;
-    const L = t.custom ? 7 : t.level;
-    $("revL1").hidden = !(L > 1);
-    $("revAdhkarRow").hidden = !(L > 1);
+    // يظهر إذا كان المستوى الأول في المراجعة على حسب المستويات (الأصل لما بعد المستوى الأول، أو اختاره المستخدم)
+    const l1 = (chosenLevels(t, state.review.levels) || defaultReviewLevels(t)).includes(1);
+    $("revL1").hidden = !l1;
+    $("revAdhkarRow").hidden = !l1;
     $("revEdition").value = c.edition;
     $("revAdhkar").checked = c.adhkar;
   }
@@ -5736,6 +5971,14 @@ const XlsxLite = (() => {
       sel.innerHTML = base.map((g) => `<option value="${g.lvl}">${esc(g.label)}</option>`).join("");
       sel.value = String((base.find((g) => g.lvl >= lv.start) || base[base.length - 1]).lvl);
     }
+    // المستويات في المراجعة: الأصل ما قبل مستوى الخطة، ولك أن تختار غيرها ولو بعده
+    const chosen = chosenLevels(state.text, lv);
+    const on = chosen || defaultReviewLevels(state.text);
+    const short = (l) => (l === 7 ? "الإضافية" : LEVEL_NAMES[l].replace(/^المستوى\s+/, ""));
+    $("levelChips").innerHTML = reviewLevels()
+      .map((l) => `<button type="button" class="chip" data-lvl="${l}" aria-pressed="${on.includes(l)}" title="${esc(LEVEL_NAMES[l])}">${esc(short(l))}</button>`)
+      .join("");
+    $("levelChipsReset").hidden = !chosen;
     const seq = levelSequence(state.text, lv);
     $("levelSeq").innerHTML = seq.length
       ? seq
@@ -5814,7 +6057,7 @@ const XlsxLite = (() => {
   }
   function computeDates() {
     const d = state.dates;
-    state.studyDates = d.enabled && d.start ? Hijri.studyDates(d.start, d.weekdays, state.plan.D) : [];
+    state.studyDates = d.enabled && d.start ? Hijri.studyDates(d.start, d.weekdays, state.plan.D, offDay) : [];
   }
   function syncDateControls() {
     if (!state.dates.enabled) return;
@@ -5822,8 +6065,10 @@ const XlsxLite = (() => {
     const sd = state.studyDates;
     if (sd.length) writeDate("e", sd[sd.length - 1]);
     $("weekdays").querySelectorAll("[data-wd]").forEach((b) => b.setAttribute("aria-pressed", String(state.dates.weekdays.includes(+b.dataset.wd))));
+    // الإجازات التي تخطّتها الخطة (من لوحة التحكم)
+    const off = sd.length ? holidaysBetween(sd[0], sd[sd.length - 1]) : [];
     $("datesInfo").textContent = sd.length
-      ? `من ${AR(Hijri.long(sd[0]))} إلى ${AR(Hijri.long(sd[sd.length - 1]))} هـ، ${daysWord(sd.length)} دراسية.`
+      ? `من ${AR(Hijri.long(sd[0]))} إلى ${AR(Hijri.long(sd[sd.length - 1]))} هـ، ${daysWord(sd.length)} دراسية${off.length ? "، دون " + off.join(" و") : ""}.`
       : "اختر يوماً دراسياً واحداً على الأقل.";
   }
   // «١٤٤٨/٥/٢» المحفوظة ← تاريخ ميلادي
@@ -6023,7 +6268,7 @@ const XlsxLite = (() => {
     const rows = (p.rows || []).map(([memo, link, big]) => ({ memo, link, big }));
     if (!rows.length) return "";
     const start = p.dates && p.dates.start ? fromHijriShort(p.dates.start) : null;
-    const dates = start ? Hijri.studyDates(start, p.dates.weekdays || [0, 1, 2, 3, 4], rows.length) : [];
+    const dates = start ? Hijri.studyDates(start, p.dates.weekdays || [0, 1, 2, 3, 4], rows.length, offDay) : [];
     return describePlan(rows, p.days || rows.length, dates);
   }
 
@@ -6228,7 +6473,7 @@ const XlsxLite = (() => {
     return [part, a.from, b.to, over];
   }
   // اسم المستوى واسم المتن (في قائمة «اختر خطة المستوى» في بطاقة الطالب: «خطة ١٠ - المستوى ٢ - …»)
-  function dailyNames() {
+  function dailyNames(withStudent = true) {
     const t = state.text;
     const lvl = t.custom ? 0 : t.level;
     const level = lvl >= 1 && lvl <= 6 ? `المستوى ${lvl}` : lvl === 7 ? LEVEL_NAMES[7] : "خطة خاصة";
@@ -6239,18 +6484,29 @@ const XlsxLite = (() => {
     };
     let text = t.custom ? t.name : segs.map((x) => nameOf(x.id) + (x.from ? ` من ص${x.from}` : "")).join("-");
     if (state.plan.D !== t.days.length) text += ` (${asciiDays(state.plan.D)})`;
-    if (studentName()) text += ` - ${studentName()}`;
+    if (withStudent && studentName()) text += ` - ${studentName()}`;
     return { level, text: ASCII(text).replace(/\s+/g, " ").trim() };
   }
-  // أوراق «بيانات الخطط»: كل ورقة خطة واحدة (١٠٠ مقدار على الأكثر) بالصفوف والصيغ والألوان كما في ملف التسجيل اليومي
-  function dailySheets() {
+  // الخطة بطريقة «بيانات الخطط»: اسم المستوى واسم المتن، ولكل يوم ١٢ خانة (جزء/من/إلى للحفظ والربط والكبرى، ثم تجاوز الإجمالي لكل منها)
+  function dailyData(withStudent) {
     const portions = state.plan.rows.map((_, i) => {
       const cells = ["memo", "link", "big"].map((col) => dailyCells(cellRuns(i, col), cellValue(i, col)));
       return cells.flatMap((c) => c.slice(0, 3)).concat(cells.map((c) => c[3]));
     });
+    return Object.assign(dailyNames(withStudent), { portions });
+  }
+  // في الخطة المحفوظة (دون اسم الطالب): تقرؤها قائمة «الخطط العلمية» في ملف الحلقة (Google Sheets) فتكتبها في «بيانات الخطط»
+  function dailySaved() {
+    const d = dailyData(false);
+    return { level: d.level, text: d.text, rows: d.portions.map((p) => p.map((v) => (v == null ? "" : String(v).replace(/\|/g, "/"))).join("|")) };
+  }
+  // أوراق «بيانات الخطط»: كل ورقة خطة واحدة (١٠٠ مقدار على الأكثر) بالصفوف والصيغ والألوان كما في ملف التسجيل اليومي
+  function dailySheets() {
+    const data = dailyData(true);
+    const portions = data.portions;
     // «الإجمالي الفعلي» لكل بند كما تحسبه صيغة الملف
     const total = (p, j) => (p[9 + j] != null ? p[9 + j] : typeof p[3 * j + 1] === "number" && typeof p[3 * j + 2] === "number" ? p[3 * j + 2] - p[3 * j + 1] + 1 : "");
-    const names = dailyNames();
+    const names = { level: data.level, text: data.text };
     const K = Math.ceil(portions.length / DAILY.max);
     const S = (v, st) => ({ v, s: st });
     const sheets = [];
@@ -6725,6 +6981,9 @@ const XlsxLite = (() => {
     const wa = $("shareWa");
     wa.hidden = !(SITE_MODE && state.loaded && state.loaded.id);
     if (!wa.hidden) wa.href = waHref(state.loaded);
+    // رابط الخطة لقائمة «الخطط العلمية» في ملف الحلقة (Google Sheets)، وطريقتها
+    $("copyLink").hidden = wa.hidden;
+    $("sheetsHelp").hidden = !SITE_MODE || typeof SHEETS_SCRIPT === "undefined";
     $("openNote").hidden = !state.loaded;
     if (state.loaded) $("openName").textContent = AR(state.loaded.name);
     const approved = isApproved();
@@ -6807,6 +7066,7 @@ const XlsxLite = (() => {
         ? { start: Hijri.short(state.dates.start), weekdays: state.dates.weekdays.slice(), fill: state.dates.fill }
         : null,
       rows: currentRows().map((r) => [r.memo, r.link, r.big, r.note || ""]),
+      daily: dailySaved(),
       description: planDescription(),
       savedAt: new Date().toISOString(),
     };
@@ -6814,6 +7074,29 @@ const XlsxLite = (() => {
 
   // رابط يفتح الخطة المحفوظة في الموقع، ورسالة واتساب تحمله (wa.me يفتح الواتساب مباشرة ليُختار من يُرسل إليه)
   const planLink = (id) => location.origin + location.pathname + "#plan=" + encodeURIComponent(id);
+  async function copyText(text, st, ok) {
+    let done = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      done = true;
+    } catch (e) {
+      // احتياط لمتصفح لا يسمح بالنسخ المباشر
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        done = document.execCommand("copy");
+      } catch (e2) {
+        done = false;
+      }
+      ta.remove();
+    }
+    setStatus(st, done ? ok : "تعذّر النسخ تلقائياً؛ انسخه يدوياً.", done ? "ok" : "error");
+  }
   const waHref = (p) => "https://wa.me/?text=" + encodeURIComponent(`«${AR(p.name || "خطة")}»\n${planLink(p.id)}`);
   // رابط مرسَل: تُقرأ الخطة وحدها من قاعدة الخطط وتُفتح في صفحة الإنشاء
   let sharedOpening = null;
@@ -6861,7 +7144,9 @@ const XlsxLite = (() => {
     fillTeacher();
     state.loaded = { id: p.id, name: p.name, textId: p.textId || null, textName: p.textName, halaqa: p.halaqa || "", teacher: p.teacher || "", by: p.by || null };
     state.approved = null;
-    selectText(id, p.days, { title: p.title, review: p.review, keepLink: true });
+    // خطة محفوظة قبل المراجعة المتصلة: تبقى مراجعتها كما حُفظت
+    const review = p.review && typeof p.review === "object" ? Object.assign({ cont: false }, p.review) : p.review;
+    selectText(id, p.days, { title: p.title, review, keepLink: true });
     applyRows((p.rows || []).map(([memo, link, big, note]) => ({ memo, link, big, note })));
     // خطة محفوظة: معتمدة كما هي، فأزرار التصدير ظاهرة
     state.approved = { key: planKey(), note: "الخطة محفوظة في «الخطط المحفوظة»." };
@@ -7023,14 +7308,41 @@ const XlsxLite = (() => {
   const BASE_SETTINGS = {
     // days: ٠ يعني تلقائياً من الخطة الأصلية لكل متن
     link: { enabled: true, mode: "pages", pages: 10, days: 0, cont: true },
-    review: { enabled: true, method: "levels", pages: 20, itemMode: "pages", itemValue: 20, self: true, repeat: true, mergeShort: true },
+    // cont: المراجعة المتصلة في القائمة، وmin: أقل عدد صفحات يقف عنده يوم المراجعة عند نهاية متن
+    review: { enabled: true, method: "levels", pages: 20, itemMode: "pages", itemValue: 20, self: true, repeat: true, mergeShort: true, cont: true, min: 20 },
     show: { student: false, halaqa: false, dates: false, weekdays: [0, 1, 2, 3, 4] },
     notice: "",
-    // ملف اكسل: «simple» الجدول بالأيام وحده، و«daily» بطريقة التسجيل اليومي (للصق في «بيانات الخطط») ومعه الجدول بالأيام
-    excel: "simple",
+    // أيام لا تُحتسب في الخطة (إجازات): [{label, from: "السنة/الشهر/اليوم", to}] بالهجري
+    holidays: [],
+    // ملف اكسل: «daily» بطريقة التسجيل اليومي (للصق في «بيانات الخطط») ومعه الجدول بالأيام، و«simple» الجدول بالأيام وحده
+    excel: "daily",
   };
   let settings = clone(BASE_SETTINGS);
   let settingsStamp = "";
+  // صار «بطريقة ملف التسجيل اليومي» هو الأصل في ملف اكسل: الإعدادات المحفوظة قبل ذلك كان «الجدول بالأيام» فيها هو الأصل لا اختياراً
+  const EXCEL_DAILY_SINCE = "2026-10-15T10:00:00.000Z";
+  function settingsOf(doc, stamp) {
+    const s = validSettings(doc);
+    if (s.excel === "simple" && stamp && stamp < EXCEL_DAILY_SINCE) s.excel = "daily";
+    return s;
+  }
+  // الإجازات بالتاريخ الميلادي، تُتخطى أيامها في تواريخ الخطة ومدتها
+  const MAX_HOLIDAYS = 40;
+  let holidayRanges = [];
+  function updateHolidays() {
+    holidayRanges = Hijri.available
+      ? settings.holidays
+          .map((h) => ({ label: h.label, from: fromHijriShort(h.from), to: fromHijriShort(h.to) }))
+          .filter((r) => r.from && r.to && r.from <= r.to)
+      : [];
+  }
+  function offDay(dt) {
+    return holidayRanges.some((r) => dt >= r.from && dt <= r.to);
+  }
+  // أسماء الإجازات التي تقع بين تاريخين (لبيان مدة الخطة)
+  function holidaysBetween(a, b) {
+    return [...new Set(holidayRanges.filter((r) => r.to >= a && r.from <= b).map((r) => r.label || "الإجازة"))];
+  }
   function validSettings(o) {
     const s = clone(BASE_SETTINGS);
     const g = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : {});
@@ -7053,6 +7365,8 @@ const XlsxLite = (() => {
       self: bool(r.self, s.review.self),
       repeat: bool(r.repeat, s.review.repeat),
       mergeShort: bool(r.mergeShort, s.review.mergeShort),
+      cont: bool(r.cont, s.review.cont),
+      min: clampInt(r.min, 1, 999, s.review.min),
     };
     const w = g(g(o).show);
     const days = Array.isArray(w.weekdays) ? [...new Set(w.weekdays.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort() : null;
@@ -7063,19 +7377,25 @@ const XlsxLite = (() => {
       weekdays: days && days.length ? days : s.show.weekdays,
     };
     s.notice = typeof g(o).notice === "string" ? g(o).notice.replace(/\r/g, "").trim().slice(0, 600) : "";
-    s.excel = g(o).excel === "daily" ? "daily" : "simple";
+    s.excel = g(o).excel === "simple" ? "simple" : "daily";
+    const hijri = (v) => typeof v === "string" && /^\d{3,4}\/\d{1,2}\/\d{1,2}$/.test(v);
+    s.holidays = (Array.isArray(g(o).holidays) ? g(o).holidays : [])
+      .filter((h) => h && hijri(h.from) && hijri(h.to))
+      .slice(0, MAX_HOLIDAYS)
+      .map((h) => ({ label: typeof h.label === "string" ? h.label.replace(/\s+/g, " ").trim().slice(0, 60) : "", from: h.from, to: h.to }));
     return s;
   }
   function loadCachedSettings() {
     try {
       const v = JSON.parse(localStorage.getItem(SETTINGS_CACHE) || "null");
       if (v && typeof v.stamp === "string") {
-        settings = validSettings(v.settings);
+        settings = settingsOf(v.settings, v.stamp);
         settingsStamp = v.stamp;
       }
     } catch (e) {
       /* لا بأس */
     }
+    updateHolidays();
   }
   // إعدادات الربط والمراجعة الكبرى التلقائية على الخطة الحالية
   function linkDefaults() {
@@ -7084,7 +7404,7 @@ const XlsxLite = (() => {
   }
   function reviewDefaults(t) {
     const r = settings.review;
-    return validReview({ method: r.method, repeat: r.repeat, mergeShort: r.mergeShort, levels: { pages: r.pages, self: r.self }, items: defaultItems(t) });
+    return validReview({ method: r.method, repeat: r.repeat, mergeShort: r.mergeShort, cont: r.cont, min: r.min, levels: { pages: r.pages, self: r.self }, items: defaultItems(t) });
   }
   function applyPlanDefaults() {
     state.link = linkDefaults();
@@ -7120,8 +7440,9 @@ const XlsxLite = (() => {
   function receiveSettings(doc) {
     const stamp = doc && typeof doc.savedAt === "string" ? doc.savedAt : "";
     if (stamp === settingsStamp) return;
-    settings = validSettings(doc && doc.settings);
+    settings = settingsOf(doc && doc.settings, stamp);
     settingsStamp = stamp;
+    updateHolidays();
     try {
       localStorage.setItem(SETTINGS_CACHE, JSON.stringify({ stamp, settings }));
     } catch (e) {
@@ -7167,6 +7488,8 @@ const XlsxLite = (() => {
     $("dRevSelf").checked = st.review.self;
     $("dRevRepeat").checked = st.review.repeat;
     $("dRevMerge").checked = st.review.mergeShort;
+    $("dRevCont").checked = st.review.cont;
+    $("dRevMin").value = AR(st.review.min);
     $("dStudent").checked = st.show.student;
     $("dHalaqa").checked = st.show.halaqa;
     $("dDates").checked = st.show.dates;
@@ -7176,6 +7499,63 @@ const XlsxLite = (() => {
     $("dNotice").value = st.notice;
     $("dExcelDaily").checked = st.excel === "daily";
     $("dExcelSimple").checked = st.excel !== "daily";
+    holEdit = st.holidays.map((h) => Object.assign({}, h));
+    renderHolidays();
+  }
+  // الإجازات في لوحة التحكم: لكل فترة اسمها وأول يوم فيها وآخر يوم (بالهجري)
+  let holEdit = [];
+  const hijriParts = (v) => {
+    const [y, m, d] = String(v || "").split("/").map(Number);
+    return { y, m, d };
+  };
+  function holidayDate(which, v, i) {
+    const h = hijriParts(v);
+    const y0 = Hijri.parts(Hijri.today()).y;
+    const years = [...new Set([y0 - 1, y0, y0 + 1, y0 + 2, h.y].filter(Boolean))].sort((a, b) => a - b);
+    const opt = (val, text, on) => `<option value="${val}"${on ? " selected" : ""}>${text}</option>`;
+    const word = which === "f" ? "بداية" : "نهاية";
+    return `<span class="hol-date"><span class="date-label">${which === "f" ? "من" : "إلى"}</span>
+      <select data-k="${which}d" aria-label="يوم ${word} الفترة ${AR(i + 1)}">${Array.from({ length: 30 }, (_, k) => opt(k + 1, AR(k + 1), h.d === k + 1)).join("")}</select>
+      <select data-k="${which}m" aria-label="شهر ${word} الفترة ${AR(i + 1)}">${Hijri.MONTHS.map((m, k) => opt(k + 1, m, h.m === k + 1)).join("")}</select>
+      <select data-k="${which}y" aria-label="سنة ${word} الفترة ${AR(i + 1)}">${years.map((y) => opt(y, AR(y), h.y === y)).join("")}</select></span>`;
+  }
+  function renderHolidays() {
+    const ol = $("dHolidays");
+    $("dHolidayAdd").hidden = !Hijri.available;
+    if (!Hijri.available) {
+      ol.innerHTML = `<li class="hint">التاريخ الهجري غير متاح في هذا المتصفح.</li>`;
+      return;
+    }
+    ol.innerHTML = holEdit.length
+      ? holEdit
+          .map(
+            (h, i) => `<li data-i="${i}">
+        <input type="text" class="hol-label" maxlength="60" value="${esc(h.label)}" placeholder="اسم الفترة، مثل: إجازة منتصف الفصل" aria-label="اسم الفترة ${AR(i + 1)}">
+        ${holidayDate("f", h.from, i)}
+        ${holidayDate("t", h.to, i)}
+        <button type="button" class="danger-btn" data-hol-del="${i}">حذف</button>
+      </li>`
+          )
+          .join("")
+      : `<li class="hint">لا توجد فترات؛ كل أيام الدراسة في الأسبوع تُحتسب.</li>`;
+    $("dHolidayAdd").disabled = holEdit.length >= MAX_HOLIDAYS;
+  }
+  // فترات النموذج كما هي الآن (وتُقدَّم البداية إن كُتبت بعد النهاية)
+  function readHolidays() {
+    if (!Hijri.available) return holEdit.map((h) => Object.assign({}, h));
+    return [...$("dHolidays").querySelectorAll("li[data-i]")].map((li) => {
+      const v = (k) => +li.querySelector(`[data-k="${k}"]`).value;
+      const date = (w) => {
+        const y = v(w + "y");
+        const m = v(w + "m");
+        return { y, m, d: Math.min(v(w + "d"), Hijri.monthLength(y, m)) };
+      };
+      let a = date("f");
+      let b = date("t");
+      const n = (x) => x.y * 10000 + x.m * 100 + x.d;
+      if (n(b) < n(a)) [a, b] = [b, a];
+      return { label: li.querySelector(".hol-label").value.replace(/\s+/g, " ").trim().slice(0, 60), from: `${a.y}/${a.m}/${a.d}`, to: `${b.y}/${b.m}/${b.d}` };
+    });
   }
   function renderDefaultsAdmin() {
     fillDefaultsForm(settings);
@@ -7203,6 +7583,8 @@ const XlsxLite = (() => {
         self: $("dRevSelf").checked,
         repeat: $("dRevRepeat").checked,
         mergeShort: $("dRevMerge").checked,
+        cont: $("dRevCont").checked,
+        min: num("dRevMin", BASE_SETTINGS.review.min),
       },
       show: {
         student: $("dStudent").checked,
@@ -7211,6 +7593,7 @@ const XlsxLite = (() => {
         weekdays: [...$("dWeekdays").querySelectorAll('[aria-pressed="true"]')].map((b) => +b.dataset.wd),
       },
       notice: $("dNotice").value,
+      holidays: readHolidays(),
       excel: $("dExcelDaily").checked ? "daily" : "simple",
     });
   }
@@ -7510,12 +7893,34 @@ const XlsxLite = (() => {
       b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
       defaultsDirty = true;
     });
+    // الإجازات: إضافة فترة وحذفها
+    $("dHolidayAdd").addEventListener("click", () => {
+      holEdit = readHolidays();
+      if (holEdit.length >= MAX_HOLIDAYS) return;
+      const today = Hijri.short(Hijri.today());
+      holEdit.push({ label: "", from: today, to: today });
+      renderHolidays();
+      defaultsDirty = true;
+      const rows = $("dHolidays").querySelectorAll(".hol-label");
+      rows[rows.length - 1].focus();
+    });
+    $("dHolidays").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-hol-del]");
+      if (!b) return;
+      holEdit = readHolidays();
+      const i = +b.dataset.holDel;
+      holEdit.splice(i, 1);
+      renderHolidays();
+      defaultsDirty = true;
+      const rest = $("dHolidays").querySelectorAll("[data-hol-del]");
+      (rest[Math.min(i, rest.length - 1)] || $("dHolidayAdd")).focus();
+    });
     $("defaultsForm").addEventListener("submit", (e) => {
       e.preventDefault();
       saveDefaults();
     });
     $("dReset").addEventListener("click", () => {
-      fillDefaultsForm(clone(BASE_SETTINGS));
+      fillDefaultsForm(Object.assign(clone(BASE_SETTINGS), { holidays: readHolidays() }));
       defaultsDirty = true;
       setStatus($("defaultsStatus"), "مُلئت الإعدادات الأصلية؛ احفظها لتُعتمد.", "");
     });
@@ -7702,7 +8107,7 @@ const XlsxLite = (() => {
               <button type="button" class="link-btn" data-open="${pid}">${open ? "مفتوحة" : "فتح"}</button>
               <button type="button" class="link-btn" data-word="${pid}">تنزيل وورد</button>
               <button type="button" class="link-btn" data-pdf="${pid}">تنزيل PDF</button>
-              ${SITE_MODE ? `<a class="link-btn wa-link" href="${esc(waHref(p))}" target="_blank" rel="noopener">إرسال بالواتساب</a>` : ""}
+              ${SITE_MODE ? `<a class="link-btn wa-link" href="${esc(waHref(p))}" target="_blank" rel="noopener">إرسال بالواتساب</a><button type="button" class="link-btn" data-copy="${pid}">نسخ الرابط</button>` : ""}
               ${SITE_MODE && lib.owner ? (promotedFrom(p.id) ? `<span class="hint">في «${esc(tabName("ready"))}»</span>` : `<button type="button" class="link-btn${armedPromote[p.id] ? " is-armed" : ""}" data-promote="${pid}">${armedPromote[p.id] ? "تأكيد النقل" : "إلى " + esc(tabName("ready"))}</button>`) : ""}
               ${canDelete(p) ? `<button type="button" class="danger-btn${armed[p.id] ? " is-armed" : ""}" data-del="${pid}">${armed[p.id] ? "تأكيد الحذف" : "حذف"}</button>` : ""}
             </div>
@@ -8344,7 +8749,7 @@ const XlsxLite = (() => {
             $("datesInfo").textContent = "تاريخ النهاية قبل تاريخ البداية.";
             return;
           }
-          const n = Hijri.countStudyDays(state.dates.start, end, state.dates.weekdays);
+          const n = Hijri.countStudyDays(state.dates.start, end, state.dates.weekdays, offDay);
           if (n >= 1) setDays(n);
         });
       }
@@ -8499,6 +8904,18 @@ const XlsxLite = (() => {
       state.review.mergeShort = e.target.checked;
       reviewChanged(false);
     });
+    $("reviewCont").addEventListener("change", (e) => {
+      state.review.cont = e.target.checked;
+      renderReview();
+      regenerate();
+    });
+    $("reviewMin").addEventListener("input", (e) => {
+      const n = parseIntAny(e.target.value);
+      if (!Number.isFinite(n) || n < 1) return;
+      state.review.min = Math.min(n, 999);
+      reviewChanged(true);
+    });
+    $("reviewMin").addEventListener("blur", () => ($("reviewMin").value = AR(state.review.min)));
     // طريقة المراجعة
     for (const id of ["methodList", "methodLevels"]) {
       $(id).addEventListener("change", (e) => {
@@ -8556,6 +8973,39 @@ const XlsxLite = (() => {
       renderLevels();
       regenerate();
     });
+    // المستويات في المراجعة: يختارها المستخدم بحرية (ولو بعد مستوى الخطة)، والأصل ما قبل مستوى الخطة
+    $("levelChips").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-lvl]");
+      if (!b) return;
+      const t = state.text;
+      const lv = state.review.levels;
+      const l = +b.dataset.lvl;
+      const set = new Set(chosenLevels(t, lv) || defaultReviewLevels(t));
+      if (set.has(l)) set.delete(l);
+      else set.add(l);
+      const next = [...set].sort((x, y) => x - y);
+      const def = defaultReviewLevels(t);
+      if (next.length === def.length && next.every((x, i) => x === def[i])) {
+        lv.levels = null;
+        lv.for = null;
+      } else {
+        lv.levels = next;
+        lv.for = t.custom ? 7 : t.level;
+      }
+      renderLevels();
+      regenerate();
+      const again = $("levelChips").querySelector(`[data-lvl="${l}"]`);
+      if (again) again.focus();
+    });
+    $("levelChipsReset").addEventListener("click", () => {
+      const lv = state.review.levels;
+      lv.levels = null;
+      lv.for = null;
+      renderLevels();
+      regenerate();
+      const first = $("levelChips").querySelector("[data-lvl]");
+      if (first) first.focus();
+    });
 
     // العنوان والمعاينة
     $("title").addEventListener("input", (e) => {
@@ -8603,6 +9053,13 @@ const XlsxLite = (() => {
 
     // الخطط المحفوظة
     $("approve").addEventListener("click", () => approvePlan());
+    // رابط الخطة والنص البرمجي لملف الحلقة في Google Sheets
+    $("copyLink").addEventListener("click", () => {
+      if (state.loaded && state.loaded.id) copyText(planLink(state.loaded.id), $("status"), "نُسخ رابط الخطة؛ الصقه في «الخطط العلمية ← إضافة خطة من الموقع» في ملف الحلقة.");
+    });
+    $("copyScript").addEventListener("click", () => {
+      if (typeof SHEETS_SCRIPT !== "undefined") copyText(SHEETS_SCRIPT, $("sheetsStatus"), "نُسخ النص البرمجي؛ الصقه في Apps Script في ملف الحلقة ثم احفظ.");
+    });
     $("ownerIn").addEventListener("click", siteSignIn);
     $("ownerOut").addEventListener("click", () => {
       ownerMsg("", "");
@@ -8617,6 +9074,8 @@ const XlsxLite = (() => {
       const pdfBtn = e.target.closest("[data-pdf]");
       const delBtn = e.target.closest("[data-del]");
       if (delBtn) return deletePlan(delBtn.dataset.del, delBtn);
+      const copyBtn = e.target.closest("[data-copy]");
+      if (copyBtn) return copyText(planLink(copyBtn.dataset.copy), st, "نُسخ رابط الخطة؛ الصقه في «الخطط العلمية ← إضافة خطة من الموقع» في ملف الحلقة.");
       const promoteBtn = e.target.closest("[data-promote]");
       if (promoteBtn) return promotePlan(promoteBtn.dataset.promote);
       const btn = openBtn || wordBtn || pdfBtn;
