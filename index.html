@@ -4282,7 +4282,8 @@ const PdfBuilder = (() => {
     } else {
       const l = COL_L + nL * SLOT_PT;
       const r = COL_R - nR * SLOT_PT;
-      title = line = { cx: (l + r) / 2, w: r - l - 2 };
+      // فسحة يسيرة بين النص والصناديق (العنوان الطويل كان يلامسها)
+      title = line = { cx: (l + r) / 2, w: r - l - 14 };
     }
     // العنوان: سطر واحد ما أمكن، وإلا سطران
     const tMax = k <= 1 ? 18 : 14;
