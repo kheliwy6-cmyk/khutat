@@ -19,6 +19,7 @@
     waraqat: 6, unwan: 6, rahbiya: 6, tahawiya: 6,
   };
   const STORE_KEY = "khutat-mutun-v1";
+  let prefsStamp = "";
   const MAX_REVIEW = ORDINALS.length;
   const DEFAULT_LINK = { enabled: true, mode: "pages", pages: 10, days: 3, daysManual: false, cont: true, prevId: null };
   // كتب المستوى الأول
@@ -98,6 +99,8 @@
       delete s.reviews; // حفظ قديم كانت المراجعة فيه تبدأ بالمتن نفسه
       s.link = state.link;
       s.withReview = state.withReview;
+      // الإعدادات التلقائية التي بُنيت عليها هذه التفضيلات
+      s.settingsStamp = prefsStamp;
       s.halaqa = state.halaqa;
       s.teacher = state.teacher;
       s.student = { enabled: state.student.enabled };
@@ -169,8 +172,9 @@
       segments: parts.map((t) => ({ id: t.id, days: t.days.length })),
     });
   }
-  /* خطة من متون مختارة بترتيب يحدده المستخدم: «mix:الطحاوية@150;bulugh»؛ أولها قد يبدأ من صفحة معيّنة
-     (ما قبلها محفوظ: يُتابَع منه الربط ويدخل في المراجعة)، وما بعده قد يكون من أي مستوى ولو لم يكن تالياً له. */
+  /* خطة من متون مختارة بترتيب يحدده المستخدم: «mix:~الورقات;الرحبية@100;الطحاوية;bulugh»
+     كل متن فيها: من أوله، أو من صفحة معيّنة «@١٠٠» (ما قبلها محفوظ: يدخل في المراجعة، ويُتابَع منه الربط إن كان أول ما يُحفظ)،
+     أو محفوظ كله «~» (للمراجعة فقط)؛ والمتون بعد متون المستوى قد تكون من أي مستوى ولو لم تكن تالية لها. */
   function daysFrom(days, from) {
     const out = [];
     for (const d of days) {
@@ -194,7 +198,7 @@
     if (selCache[id]) return selCache[id];
     const m = /^mix:(.+)$/.exec(id || "");
     if (!m) return null;
-    // «~id» متن محفوظ قبل متن البدء (يُراجَع ولا يُحفظ في الخطة)، ولا يكون إلا في أولها
+    // «~id» متن محفوظ (يُراجَع ولا يُحفظ في الخطة)، و«id@صفحة» يبدأ حفظه منها
     const all = m[1].split(";").map((x) => {
       const done = x.startsWith("~");
       const [tid, from] = x.replace(/^~/, "").split("@");
@@ -203,7 +207,7 @@
     if (!all.length || all.some((x) => !x.t) || new Set(all.map((x) => x.t.id)).size !== all.length) return null;
     const done = all.filter((x) => x.done).map((x) => x.t.id);
     const segs = all.filter((x) => !x.done);
-    if (!segs.length || all.slice(0, done.length).some((x) => !x.done)) return null;
+    if (!segs.length) return null;
     for (const x of segs) {
       const span = pageSpan(x.t);
       if (x.from && (x.from <= span.a || x.from > span.b)) x.from = 0;
@@ -235,6 +239,8 @@
     }
     t.segs = segs.map((x) => ({ id: x.t.id, from: x.from }));
     t.done = done;
+    // متون الخطة كلها بترتيبها كما في قائمة «المتون»: من أوله، أو من صفحة، أو محفوظ
+    t.entries = all.map((x) => ({ id: x.t.id, mode: x.done ? "done" : x.from ? "from" : "whole", from: x.from }));
     return (selCache[id] = t);
   }
   // ما حُفظ من متن قبل صفحة البدء: «part:الطحاوية@150»
@@ -252,15 +258,17 @@
     id === "level-1"
       ? level1Plan()
       : allTexts().find((t) => t.id === id) || LEVEL_PLANS.find((t) => t.id === id) || selectionPlan(id) || mixPlan(id) || partText(id);
-  // رقم الخطة من متونها: كلها من المستوى وتبدأ من أولها ← رقم المستوى أو المتن أو بعض متونه كما كان؛ وإلا «mix:»
-  // start: متن البدء (وما قبله في القائمة محفوظ)، from: صفحة البدء فيه
-  function compositionId(lvl, ids, start, from) {
-    const k = Math.max(0, ids.indexOf(start));
+  // رقم الخطة من متونها [{id, mode: whole|from|done, from}]: كلها من المستوى ومن أولها ← رقم المستوى أو المتن أو بعض متونه كما كان؛ وإلا «mix:»
+  function compositionId(lvl, entries) {
+    const ids = entries.map((e) => e.id);
     const inLevel = levelTexts(lvl).map((t) => t.id);
-    if (!k && !from && ids.every((id) => inLevel.includes(id))) return selectionId(lvl, ids);
-    if (!k && !from && ids.length === 1) return ids[0];
-    return "mix:" + ids.map((id, i) => (i < k ? "~" + id : i === k && from ? `${id}@${from}` : id)).join(";");
+    const plain = entries.every((e) => e.mode === "whole");
+    if (plain && ids.every((id) => inLevel.includes(id))) return selectionId(lvl, ids);
+    if (plain && ids.length === 1) return ids[0];
+    return "mix:" + entries.map((e) => (e.mode === "done" ? "~" + e.id : e.mode === "from" && e.from ? `${e.id}@${e.from}` : e.id)).join(";");
   }
+  // متون الخطة بترتيبها وطريقة بدء كل منها
+  const entriesOf = (t) => (t.entries ? t.entries.map((e) => Object.assign({}, e)) : ownIds(t).map((id) => ({ id, mode: "whole", from: 0 })));
   // متون المستوى في قائمة «المتون» بترتيب البرنامج (المستوى الأول: المختصر بطبعته ثم الأذكار والآداب)
   const levelTexts = (lvl) => (lvl === 1 ? [state.level1.edition, "adhkar"].map(getText) : TEXTS.filter((t) => t.level === lvl));
   // ما عُلِّم من متون المستوى في الخطة
@@ -289,8 +297,8 @@
   }
   // متون المستوى غير المعلَّمة: لا تدخل في الخطة ولا في المراجعة ولا يُتابَع منها الربط.
   // (والخطة الجاهزة لمتن واحد على ترتيب البرنامج: ما قبله من مستواه محفوظ يُراجَع.)
-  // المعلَّم في القائمة: ما في الخطة، وما حُفظ منها قبل متن البدء
-  const checkedIds = (t = state.text) => (t.done || []).concat(ownIds(t));
+  // المعلَّم في القائمة: ما في الخطة، وما عُلِّم منها محفوظاً
+  const checkedIds = (t = state.text) => entriesOf(t).map((e) => e.id);
   function excludedIds(t = state.text) {
     if (!t || t.custom || state.prevInLevel) return new Set();
     const own = new Set(checkedIds(t));
@@ -355,78 +363,102 @@
       if (state.text) $("text").value = state.text.id;
       return;
     }
-    const c = composition(lvl);
-    const own = new Set(c.ids);
+    const ents = composition(lvl).entries;
+    const byId = Object.fromEntries(ents.map((e) => [e.id, e]));
     const inLevel = levelTexts(lvl);
     const levelIds = new Set(inLevel.map((t) => t.id));
-    const first = c.start;
-    const done = new Set(c.done);
-    // ما قبل متن البدء محفوظ، ومتن البدء بأيامه من صفحة البدء
-    const daysOf = (t) => (done.has(t.id) ? "محفوظ" : daysWord(t.id === first && c.from ? daysFrom(t.days, c.from).length : t.days.length));
+    // أيام كل متن في الخطة: من صفحة البدء إن كانت، و«محفوظ» لما عُلِّم محفوظاً كله
+    const daysOf = (t, e) => (e && e.mode === "done" ? "محفوظ" : daysWord(e && e.mode === "from" && e.from ? daysFrom(t.days, e.from).length : t.days.length));
     const rows = inLevel.map((t, i) => {
-      const on = own.has(t.id);
+      const e = byId[t.id];
       const ed = lvl === 1 && isMukhtasar(t);
       const label = ed ? AR(t.name).replace(/\s*\([^()]*ط[^()]*\)\s*$/, "") : AR(t.name);
       const editions = ed
         ? `<select id="l1Edition" aria-label="طبعة المختصر">${MUKHTASAR_EDITIONS.map((id) => `<option value="${id}"${id === t.id ? " selected" : ""}>${esc(editionLabel(id))}</option>`).join("")}</select>`
         : "";
-      return `<div class="tcheck${on ? "" : " is-off"}"><input type="checkbox" id="tc-${i}" data-id="${t.id}"${on ? " checked" : ""}><label for="tc-${i}">${esc(label)}</label>${editions}<span class="tdays">${daysOf(t)}</span></div>`;
+      return (
+        `<div class="tcheck${e ? "" : " is-off"}${e && e.mode === "done" ? " is-done" : ""}"><input type="checkbox" id="tc-${i}" data-id="${t.id}"${e ? " checked" : ""}><label for="tc-${i}">${esc(label)}</label>${editions}<span class="tdays">${e ? daysOf(t, e) : daysWord(t.days.length)}</span></div>` +
+        (e ? startLine(t, e) : "")
+      );
     });
-    // متون أُضيفت بعدها من مستويات أخرى
-    const added = c.ids
-      .filter((id) => !levelIds.has(id))
-      .map((id) => {
-        const t = getText(id);
-        return `<div class="tcheck tadded"><span class="tplus" aria-hidden="true">+</span><span class="tname">${esc(AR(t.name))} <small>${esc(LEVEL_NAMES[t.level] || "")}</small></span><span class="tdays">${daysOf(t)}</span><button type="button" class="link-btn" data-unappend="${t.id}" aria-label="إزالة ${esc(AR(t.name))} من الخطة">إزالة</button></div>`;
-      });
+    // متون أُضيفت بعدها من مستويات أخرى (ومستوى أُضيف أكثر من متن منه له رأس يُزال به كله)
+    const appended = ents.filter((e) => !levelIds.has(e.id));
+    let added = "";
+    appended.forEach((e, i) => {
+      const t = getText(e.id);
+      const prev = i > 0 ? getText(appended[i - 1].id) : null;
+      if (!prev || prev.level !== t.level) {
+        let run = 1;
+        while (i + run < appended.length && getText(appended[i + run].id).level === t.level) run++;
+        if (run > 1)
+          added += `<div class="tadded-head"><span>${esc(LEVEL_NAMES[t.level] || "")}</span><button type="button" class="link-btn" data-unappend-level="${t.level}">إزالة ${esc(LEVEL_NAMES[t.level] || "")}</button></div>`;
+      }
+      added +=
+        `<div class="tcheck tadded${e.mode === "done" ? " is-done" : ""}"><span class="tplus" aria-hidden="true">+</span><span class="tname">${esc(AR(t.name))} <small>${esc(LEVEL_NAMES[t.level] || "")}</small></span><span class="tdays">${daysOf(t, e)}</span><button type="button" class="link-btn" data-unappend="${t.id}" aria-label="إزالة ${esc(AR(t.name))} من الخطة">إزالة</button></div>` +
+        startLine(t, e);
+    });
+    // إضافة متن أو مستوى كامل بعدها
+    const own = new Set(ents.map((e) => e.id));
+    const hasEdition = MUKHTASAR_EDITIONS.some((x) => own.has(x) || levelIds.has(x));
+    const candidates = TEXTS.filter((t) => !levelIds.has(t.id) && !own.has(t.id) && !(hasEdition && MUKHTASAR_EDITIONS.includes(t.id)));
     const groups = {};
-    TEXTS.filter((t) => !levelIds.has(t.id) && !own.has(t.id)).forEach((t) => (groups[t.level] = groups[t.level] || []).push(t));
-    const more = Object.keys(groups).length
-      ? `<div class="tmore"><select id="appendText" aria-label="إضافة متن بعدها من مستوى آخر"><option value="">+ إضافة متن بعدها من مستوى آخر</option>${Object.keys(groups)
-          .map((l) => `<optgroup label="${esc(LEVEL_NAMES[l] || "")}">${groups[l].map((t) => `<option value="${t.id}">${esc(AR(t.name))}</option>`).join("")}</optgroup>`)
-          .join("")}</select></div>`
+    candidates.forEach((t) => (groups[t.level] = groups[t.level] || []).push(t));
+    const lvls = Object.keys(groups).map(Number).filter((l) => l !== lvl);
+    const wholeLevels = lvls.filter((l) => levelAppendIds(l, ents).length > 1);
+    const more = lvls.length
+      ? `<div class="tmore"><select id="appendText" aria-label="إضافة متن أو مستوى بعدها"><option value="">+ إضافة متن أو مستوى بعدها</option>` +
+        (wholeLevels.length ? `<optgroup label="مستوى كامل">${wholeLevels.map((l) => `<option value="level:${l}">${esc(LEVEL_NAMES[l] || "")} كاملاً</option>`).join("")}</optgroup>` : "") +
+        lvls.map((l) => `<optgroup label="${esc(LEVEL_NAMES[l] || "")}">${groups[l].map((t) => `<option value="${t.id}">${esc(AR(t.name))}</option>`).join("")}</optgroup>`).join("") +
+        `</select></div>`
       : "";
-    // البدء من صفحة معيّنة في أي متن من الخطة (والأصل أول متونها كاملاً)؛ وما قبله في القائمة محفوظ
-    const on = startOpen || !!c.from || c.done.length > 0;
-    const range = first ? startRange(c, first) : null;
-    const start = first
-      ? `<div class="tstart"><input type="checkbox" id="startOn"${on ? " checked" : ""}><label for="startOn">البدء من صفحة معيّنة</label>` +
-        `<select id="startText" aria-label="متن البدء"${on ? "" : " hidden"}>${c.ids.map((id) => `<option value="${id}"${id === first ? " selected" : ""}>${esc(SHORT[id] || AR(getText(id).name))}</option>`).join("")}</select>` +
-        `<input id="startPage" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="صفحة البدء" placeholder="${AR(range.a)}" value="${c.from ? AR(c.from) : ""}"${on ? "" : " hidden"}>` +
-        `<span class="hint" id="startHint"${on ? "" : " hidden"}>الصفحة من ${AR(range.a)} إلى ${AR(range.b)}؛ وما قبلها محفوظ يُراجَع ويبدأ منه الربط.</span></div>`
-      : "";
-    box.innerHTML = rows.join("") + added.join("") + more + start + `<p class="hint" id="textChecksNote">ما لا تعلّمه لا يدخل في الخطة ولا في المراجعة.</p>`;
+    box.innerHTML =
+      rows.join("") + added + more +
+      `<p class="hint" id="textChecksNote">ما لا تعلّمه لا يدخل في الخطة ولا في المراجعة. وما قبل صفحة البدء، وما كان «محفوظاً كله»، يدخل في المراجعة ولا يُحفظ من جديد.</p>`;
   }
-  // متون الخطة الحالية بترتيبها، وصفحة بدء أولها (إن كانت الخطة من هذا المستوى)
+  // سطر «البدء» تحت كل متن في الخطة: من أوله، أو من صفحة معيّنة، أو محفوظ كله
+  let startPending = null;
+  function startLine(t, e) {
+    const span = pageSpan(t);
+    const mode = startPending === t.id ? "from" : e.mode;
+    const sid = "ts-" + t.id;
+    const opt = (v, label) => `<option value="${v}"${mode === v ? " selected" : ""}>${label}</option>`;
+    return (
+      `<div class="tstart" data-for="${t.id}"><label for="${sid}">البدء</label>` +
+      `<select id="${sid}" data-start="${t.id}">${opt("whole", "من أوله")}${opt("from", "من صفحة…")}${opt("done", "محفوظ كله")}</select>` +
+      (mode === "from"
+        ? `<input class="mini" data-page="${t.id}" type="text" inputmode="numeric" autocomplete="off" aria-label="صفحة البدء في ${esc(AR(t.name))}" placeholder="${AR(span.a + 1)}" value="${e.mode === "from" && e.from ? AR(e.from) : ""}">` +
+          `<span class="hint" data-hint="${t.id}">من ${AR(span.a + 1)} إلى ${AR(span.b)}</span>`
+        : "") +
+      `</div>`
+    );
+  }
+  // متون مستوى كامل تُضاف بعد الخطة (ما ليس فيها منه؛ والمستوى الأول: المختصر بطبعته المختارة ثم الأذكار والآداب)
+  function levelAppendIds(l, ents) {
+    const own = new Set(ents.map((e) => e.id));
+    const ids = l === 1 ? (MUKHTASAR_EDITIONS.some((x) => own.has(x)) ? [] : [state.level1.edition]).concat(["adhkar"]) : TEXTS.filter((t) => t.level === l).map((t) => t.id);
+    return ids.filter((id) => !own.has(id));
+  }
+  // متون الخطة الحالية بترتيبها (إن كانت الخطة من هذا المستوى)
   function composition(lvl) {
     const t = state.text;
-    if (!t || levelOf(t) !== lvl) return { ids: [], start: null, from: 0, done: [], fixed: null };
-    const s0 = segsOf(t)[0];
-    const from = s0 && s0.from ? s0.from : 0;
-    const done = t.done || [];
-    const start = ownIds(t)[0];
-    // متن بدء اختاره المستخدم (بصفحة أو بمتون محفوظة قبله)؛ وإلا فالبدء من أول المتون المعلَّمة أياً كان
-    return { ids: checkedIds(t), start, from, done, fixed: from || done.length ? start : null };
+    if (!t || levelOf(t) !== lvl) return { entries: [] };
+    return { entries: entriesOf(t) };
   }
-  // نطاق صفحة البدء: في أول متن من القائمة بعد أول صفحة (وإلا فهو المتن كاملاً)، وفيما بعده من أوله
-  function startRange(c, id) {
-    const span = pageSpan(getText(id));
-    return { a: id === c.ids[0] ? span.a + 1 : span.a, b: span.b };
-  }
-  let startOpen = false;
-  // خطة جديدة من متون مختارة: متون المستوى بترتيب البرنامج، ثم ما أُضيف بعدها بترتيب إضافته
-  function recompose(ids, start, from) {
+  // خطة جديدة من متون مختارة: متون المستوى بترتيب البرنامج، ثم ما أُضيف بعدها بترتيب إضافته (ومتن واحد على الأقل يُحفظ)
+  function recompose(entries) {
     const lvl = +$("level").value;
     const inLevel = levelTexts(lvl).map((t) => t.id);
-    const all = inLevel.filter((id) => ids.includes(id)).concat(ids.filter((id) => !inLevel.includes(id)));
-    // متن البدء إن خرج من القائمة: تبدأ الخطة من أول متونها
-    const s = all.includes(start) ? start : all[0];
-    if (start && s !== start) startOpen = false;
+    const all = inLevel
+      .map((id) => entries.find((e) => e.id === id))
+      .filter(Boolean)
+      .concat(entries.filter((e) => !inLevel.includes(e.id)));
+    if (!all.some((e) => inLevel.includes(e.id)) || !all.some((e) => e.mode !== "done")) return false;
     state.loaded = null;
     state.approved = null;
     // تغيّرت متون الخطة: تبدأ بأيامها الأصلية
-    selectText(compositionId(lvl, all, s, s === start ? from : 0));
+    selectText(compositionId(lvl, all));
     renderLibrary();
+    return true;
   }
 
   /* ---------- الحالة ---------- */
@@ -466,10 +498,14 @@
   // ولأول المستوى الثاني آخر المستوى الأول؛ وفي الخطة الجاهزة لمتن واحد: ما قبله في ترتيب البرنامج
   function defaultPrev(t) {
     if (!t || t.custom) return null;
-    const s0 = segsOf(t)[0];
-    if (s0 && s0.from) return getText(`part:${s0.id}@${s0.from}`);
-    // بدأت الخطة بمتن بعد متون محفوظة: يتابع الربط من آخرها
-    if (t.done && t.done.length) return getText(t.done[t.done.length - 1]);
+    // أول ما يُحفظ في الخطة يبدأ من صفحة: يتابع الربط مما قبلها منه
+    const ents = entriesOf(t);
+    const k = ents.findIndex((e) => e.mode !== "done");
+    const e0 = ents[k];
+    if (e0 && e0.mode === "from" && e0.from) return getText(`part:${e0.id}@${e0.from}`);
+    // وقبله متون محفوظة: يتابع الربط من آخرها
+    const before = ents.slice(0, k).filter((e) => e.mode === "done");
+    if (before.length) return getText(before[before.length - 1].id);
     const first = t.isLevel ? getText(t.parts[0]) : getText(baseOf(t));
     if (!first || first.level <= 1) return null;
     const rest = TEXTS.filter((x) => x.level > 1 && x.level <= 6);
@@ -489,8 +525,12 @@
     state.text = t;
     state.maxDays = pagesOf(t.id);
     state.days = clampDays(days || t.days.length);
-    if (!preset.keepLink) state.link.daysManual = false;
-    if (!preset.keepLink) state.link.prevId = null;
+    // أيام الربط تعود إلى الأصل مع كل متن: عدد ثابت إن ضبطه صاحب الصفحة، وإلا تلقائياً من الخطة الأصلية
+    if (!preset.keepLink) {
+      state.link.daysManual = settings.link.days > 0;
+      if (state.link.daysManual) state.link.days = settings.link.days;
+      state.link.prevId = null;
+    }
     state.title = AR(preset.title || t.title);
     fillLevelSelect();
     $("level").value = String(levelOf(t));
@@ -649,7 +689,7 @@
   }
   // أول ما يُراجَع: أول صفحة من المختصر، إلا في خطة المختصر نفسه أو المستوى الأول كاملاً فما حُفظ منه
   function defaultItems(t) {
-    return [{ source: isMukhtasar(t) || t.id === "level-1" ? "self" : state.level1.edition, mode: "pages", value: 20 }];
+    return [{ source: isMukhtasar(t) || t.id === "level-1" ? "self" : state.level1.edition, mode: settings.review.itemMode, value: settings.review.itemValue }];
   }
   function validReview(r) {
     if (!r || !Array.isArray(r.items)) return null;
@@ -681,12 +721,13 @@
   // الأصل: المراجعة على حسب المستويات (ما لم يختر العارض غيرها من قبل)
   function reviewFromPrefs(t, prefs) {
     const g = prefs.review2 || {};
+    const r = settings.review;
     const saved = !t.custom && prefs.reviewItems && prefs.reviewItems[t.id];
     return validReview({
-      method: g.method || "levels",
-      repeat: g.repeat,
-      mergeShort: g.mergeShort,
-      levels: g.levels || (prefs.review && prefs.review.levels),
+      method: g.method || r.method,
+      repeat: typeof g.repeat === "boolean" ? g.repeat : r.repeat,
+      mergeShort: typeof g.mergeShort === "boolean" ? g.mergeShort : r.mergeShort,
+      levels: g.levels || (prefs.review && prefs.review.levels) || { pages: r.pages, self: r.self },
       items: Array.isArray(saved) ? saved : defaultItems(t),
     });
   }
@@ -1402,6 +1443,15 @@
     } catch (e) {
       /* تبقى المسميات الأصلية */
     }
+    // الإعدادات التلقائية للخطط وإعلان الصفحة الرئيسية
+    try {
+      db.doc(SETTINGS_DOC).onSnapshot(
+        (snap) => receiveSettings(snap.exists ? snap.data() : null),
+        () => {}
+      );
+    } catch (e) {
+      /* تبقى الإعدادات الأصلية */
+    }
     plansDb = db;
     if (!lazy) watchPlans();
   }
@@ -1883,6 +1933,227 @@
     }
   }
 
+  /* ---------- الإعدادات التلقائية للخطط (لوحة التحكم) ----------
+     ما تبدأ به كل خطة: الربط والمراجعة الكبرى وما يظهر فيها، وإعلان أعلى الصفحة الرئيسية. يحفظها صاحب الصفحة في config/settings
+     (ونسخة منها في متصفح العارض). وإذا غيّرها صارت هي الأصل عند كل عارض ولو كان قد غيّر إعداداته من قبل؛
+     ولكلٍّ أن يغيّرها لخطته بعد ذلك. */
+  const SETTINGS_DOC = "config/settings";
+  const SETTINGS_CACHE = "khutat-settings-v1";
+  const BASE_SETTINGS = {
+    // days: ٠ يعني تلقائياً من الخطة الأصلية لكل متن
+    link: { enabled: true, mode: "pages", pages: 10, days: 0, cont: true },
+    review: { enabled: true, method: "levels", pages: 20, itemMode: "pages", itemValue: 20, self: true, repeat: true, mergeShort: true },
+    show: { student: false, halaqa: false, dates: false, weekdays: [0, 1, 2, 3, 4] },
+    notice: "",
+  };
+  let settings = clone(BASE_SETTINGS);
+  let settingsStamp = "";
+  function validSettings(o) {
+    const s = clone(BASE_SETTINGS);
+    const g = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : {});
+    const bool = (v, d) => (typeof v === "boolean" ? v : d);
+    const l = g(g(o).link);
+    s.link = {
+      enabled: bool(l.enabled, s.link.enabled),
+      mode: l.mode === "days" ? "days" : "pages",
+      pages: clampInt(l.pages, 1, 300, s.link.pages),
+      days: clampInt(l.days, 0, 30, 0),
+      cont: bool(l.cont, s.link.cont),
+    };
+    const r = g(g(o).review);
+    s.review = {
+      enabled: bool(r.enabled, s.review.enabled),
+      method: r.method === "list" ? "list" : "levels",
+      pages: clampInt(r.pages, 1, 999, s.review.pages),
+      itemMode: r.itemMode === "days" ? "days" : "pages",
+      itemValue: clampInt(r.itemValue, 1, 999, s.review.itemValue),
+      self: bool(r.self, s.review.self),
+      repeat: bool(r.repeat, s.review.repeat),
+      mergeShort: bool(r.mergeShort, s.review.mergeShort),
+    };
+    const w = g(g(o).show);
+    const days = Array.isArray(w.weekdays) ? [...new Set(w.weekdays.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort() : null;
+    s.show = {
+      student: bool(w.student, s.show.student),
+      halaqa: bool(w.halaqa, s.show.halaqa),
+      dates: bool(w.dates, s.show.dates),
+      weekdays: days && days.length ? days : s.show.weekdays,
+    };
+    s.notice = typeof g(o).notice === "string" ? g(o).notice.replace(/\r/g, "").trim().slice(0, 600) : "";
+    return s;
+  }
+  function loadCachedSettings() {
+    try {
+      const v = JSON.parse(localStorage.getItem(SETTINGS_CACHE) || "null");
+      if (v && typeof v.stamp === "string") {
+        settings = validSettings(v.settings);
+        settingsStamp = v.stamp;
+      }
+    } catch (e) {
+      /* لا بأس */
+    }
+  }
+  // إعدادات الربط والمراجعة الكبرى التلقائية على الخطة الحالية
+  function linkDefaults() {
+    const l = settings.link;
+    return Object.assign({}, DEFAULT_LINK, { enabled: l.enabled, mode: l.mode, pages: l.pages, days: l.days || 3, daysManual: l.days > 0, cont: l.cont, prevId: null });
+  }
+  function reviewDefaults(t) {
+    const r = settings.review;
+    return validReview({ method: r.method, repeat: r.repeat, mergeShort: r.mergeShort, levels: { pages: r.pages, self: r.self }, items: defaultItems(t) });
+  }
+  function applyPlanDefaults() {
+    state.link = linkDefaults();
+    state.withReview = settings.review.enabled;
+    state.review = reviewDefaults(state.text);
+  }
+  function applyShowDefaults() {
+    const w = settings.show;
+    state.student.enabled = w.student;
+    state.halaqa.enabled = w.halaqa;
+    state.dates.weekdays = w.weekdays.slice();
+    state.dates.enabled = w.dates && Hijri.available;
+    if (state.dates.enabled && !state.dates.start) state.dates.start = Hijri.today();
+  }
+  // تفضيلات العارض التي تعود إلى الأصل إذا غيّر صاحب الصفحة الإعدادات
+  function dropStalePrefs(prefs) {
+    if ((prefs.settingsStamp || "") === settingsStamp) return prefs;
+    for (const k of ["link", "withReview", "review2", "reviewItems", "student"]) delete prefs[k];
+    if (prefs.halaqa) delete prefs.halaqa.enabled;
+    if (prefs.dates) {
+      delete prefs.dates.enabled;
+      delete prefs.dates.weekdays;
+    }
+    prefs.stale = true;
+    return prefs;
+  }
+  function renderNotice() {
+    const n = settings.notice;
+    $("siteNotice").textContent = n;
+    $("siteNotice").hidden = !n;
+  }
+  // وصلت الإعدادات من قاعدة البيانات (أو حفظها صاحب الصفحة)
+  function receiveSettings(doc) {
+    const stamp = doc && typeof doc.savedAt === "string" ? doc.savedAt : "";
+    if (stamp === settingsStamp) return;
+    settings = validSettings(doc && doc.settings);
+    settingsStamp = stamp;
+    try {
+      localStorage.setItem(SETTINGS_CACHE, JSON.stringify({ stamp, settings }));
+    } catch (e) {
+      /* لا بأس */
+    }
+    renderNotice();
+    // تُطبَّق على الخطة الحالية إلا إذا كانت خطة محفوظة مفتوحة (فتُطبَّق عند فتح الصفحة بعد ذلك)
+    if (state.text && !state.loaded) {
+      prefsStamp = stamp;
+      try {
+        const pr = dropStalePrefs(loadPrefs());
+        delete pr.stale;
+        pr.settingsStamp = stamp;
+        localStorage.setItem(STORE_KEY, JSON.stringify(pr));
+      } catch (e) {
+        /* لا بأس */
+      }
+      applyPlanDefaults();
+      applyShowDefaults();
+      computeDates();
+      syncControls();
+      renderReview();
+      updateStudentLine();
+      regenerate();
+    }
+    if (!$("view-admin").hidden && lib.owner && !defaultsDirty) renderDefaultsAdmin();
+  }
+  // نموذج الإعدادات في لوحة التحكم
+  let defaultsDirty = false;
+  function fillDefaultsForm(st) {
+    $("dLinkOn").checked = st.link.enabled;
+    $("dLinkPages").checked = st.link.mode === "pages";
+    $("dLinkDays").checked = st.link.mode === "days";
+    $("dLinkPagesN").value = AR(st.link.pages);
+    $("dLinkDaysN").value = st.link.days ? AR(st.link.days) : "";
+    $("dLinkCont").checked = st.link.cont;
+    $("dRevOn").checked = st.review.enabled;
+    $("dRevLevels").checked = st.review.method === "levels";
+    $("dRevList").checked = st.review.method === "list";
+    $("dRevPages").value = AR(st.review.pages);
+    $("dRevItemN").value = AR(st.review.itemValue);
+    $("dRevItemMode").value = st.review.itemMode;
+    $("dRevSelf").checked = st.review.self;
+    $("dRevRepeat").checked = st.review.repeat;
+    $("dRevMerge").checked = st.review.mergeShort;
+    $("dStudent").checked = st.show.student;
+    $("dHalaqa").checked = st.show.halaqa;
+    $("dDates").checked = st.show.dates;
+    $("dWeekdays").innerHTML = Hijri.WEEKDAYS.map(
+      (w, i) => `<button type="button" class="chip" data-wd="${i}" aria-pressed="${st.show.weekdays.includes(i)}">${w}</button>`
+    ).join("");
+    $("dNotice").value = st.notice;
+  }
+  function renderDefaultsAdmin() {
+    fillDefaultsForm(settings);
+    defaultsDirty = false;
+  }
+  function collectDefaults() {
+    const num = (id, d) => {
+      const n = parseIntAny($(id).value);
+      return Number.isFinite(n) ? n : d;
+    };
+    return validSettings({
+      link: {
+        enabled: $("dLinkOn").checked,
+        mode: $("dLinkDays").checked ? "days" : "pages",
+        pages: num("dLinkPagesN", BASE_SETTINGS.link.pages),
+        days: num("dLinkDaysN", 0),
+        cont: $("dLinkCont").checked,
+      },
+      review: {
+        enabled: $("dRevOn").checked,
+        method: $("dRevList").checked ? "list" : "levels",
+        pages: num("dRevPages", BASE_SETTINGS.review.pages),
+        itemMode: $("dRevItemMode").value,
+        itemValue: num("dRevItemN", BASE_SETTINGS.review.itemValue),
+        self: $("dRevSelf").checked,
+        repeat: $("dRevRepeat").checked,
+        mergeShort: $("dRevMerge").checked,
+      },
+      show: {
+        student: $("dStudent").checked,
+        halaqa: $("dHalaqa").checked,
+        dates: $("dDates").checked,
+        weekdays: [...$("dWeekdays").querySelectorAll('[aria-pressed="true"]')].map((b) => +b.dataset.wd),
+      },
+      notice: $("dNotice").value,
+    });
+  }
+  async function saveDefaults() {
+    const st = $("defaultsStatus");
+    if (!lib.db) {
+      setStatus(st, "الحفظ غير متاح في هذا العرض.", "error");
+      return;
+    }
+    const next = collectDefaults();
+    if (!next.show.weekdays.length) {
+      setStatus(st, "اختر يوماً دراسياً واحداً على الأقل.", "error");
+      return;
+    }
+    $("dSave").disabled = true;
+    setStatus(st, "جارٍ الحفظ…", "busy");
+    try {
+      const doc = { settings: next, savedAt: new Date().toISOString() };
+      await lib.db.doc(SETTINGS_DOC).set(doc);
+      defaultsDirty = false;
+      receiveSettings(doc);
+      renderDefaultsAdmin();
+      setStatus(st, "حُفظت الإعدادات، وصارت هي الأصل عند كل من يفتح الصفحة.", "ok");
+    } catch (err) {
+      setStatus(st, err && err.code === "invalid_argument" ? "حفظ الإعدادات لصاحب الصفحة والمشرفين فقط." : "تعذّر الحفظ؛ حاول مرة أخرى.", "error");
+    } finally {
+      $("dSave").disabled = false;
+    }
+  }
+
   // نموذج لوحة التحكم: خانة لكل اسم، وفيها الاسم الأصلي ظاهراً حين تكون فارغة
   function renderAdmin() {
     const owner = lib.owner;
@@ -1893,6 +2164,8 @@
         ? "لوحة التحكم لصاحب الصفحة فقط؛ سجّل دخولك من «دخول صاحب الصفحة» أسفل الصفحة."
         : "لوحة التحكم لصاحب الصفحة فقط.";
     $("adminForm").hidden = !owner;
+    $("adminDefaults").hidden = !owner;
+    if (owner && !defaultsDirty) renderDefaultsAdmin();
     // في الموقع: المشرفون لصاحب الموقع وحده، والنسخة الاحتياطية لكل مشرف
     $("adminPeople").hidden = !(SITE_MODE && owner && lib.main);
     $("adminBackup").hidden = !(SITE_MODE && owner);
@@ -2072,11 +2345,12 @@
       const snap = await lib.db.collection("plans").get();
       const plans = snap.docs.filter((d) => d.exists).map((d) => Object.assign({ id: d.id }, d.data()));
       const names = Object.keys(nameOverrides || {}).length ? nameOverrides : null;
-      const data = { app: "khutat", kind: "backup", version: 1, exportedAt: new Date().toISOString(), site: location.origin + location.pathname, plans, names };
+      const setts = settingsStamp ? settings : null;
+      const data = { app: "khutat", kind: "backup", version: 1, exportedAt: new Date().toISOString(), site: location.origin + location.pathname, plans, names, settings: setts };
       const d = new Date();
       const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       await offerFile(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }), `نسخة احتياطية - الخطط المحفوظة ${stamp}.json`, st);
-      if (st.dataset.kind !== "error") setStatus(st, `نُزّلت نسخة فيها ${plansWord(plans.length)}${names ? " والمسميات المعدّلة" : ""}.`, "ok");
+      if (st.dataset.kind !== "error") setStatus(st, `نُزّلت نسخة فيها ${plansWord(plans.length)}${names ? " والمسميات المعدّلة" : ""}${setts ? " والإعدادات التلقائية" : ""}.`, "ok");
     } catch (err) {
       setStatus(st, "تعذّر تجهيز النسخة الآن.", "error");
     } finally {
@@ -2093,11 +2367,12 @@
       if (!data || data.app !== "khutat" || !Array.isArray(data.plans)) throw new Error("not a backup");
       const plans = data.plans.filter((p) => p && typeof p === "object" && typeof p.name === "string" && Array.isArray(p.rows));
       const names = data.names && typeof data.names === "object" && !Array.isArray(data.names) ? data.names : null;
-      if (!plans.length && !names) throw new Error("empty");
-      pendingRestore = { plans, names };
+      const setts = data.settings && typeof data.settings === "object" && !Array.isArray(data.settings) ? validSettings(data.settings) : null;
+      if (!plans.length && !names && !setts) throw new Error("empty");
+      pendingRestore = { plans, names, settings: setts };
       $("backupConfirm").textContent = `تأكيد استرجاع ${plansWord(plans.length)}`;
       $("backupConfirm").hidden = false;
-      setStatus(st, `في الملف ${plansWord(plans.length)}${names ? " والمسميات" : ""}. الاسترجاع يضيفها ويحدّث المتطابق منها، ولا يحذف شيئاً.`, "");
+      setStatus(st, `في الملف ${plansWord(plans.length)}${names ? " والمسميات" : ""}${setts ? " والإعدادات التلقائية" : ""}. الاسترجاع يضيفها ويحدّث المتطابق منها، ولا يحذف شيئاً.`, "");
     } catch (err) {
       setStatus(st, "هذا الملف ليس نسخة احتياطية من هذه الصفحة.", "error");
     }
@@ -2121,9 +2396,14 @@
         await lib.db.doc(NAMES_DOC).set({ names: r.names, savedAt: new Date().toISOString() });
         receiveNames(r.names);
       }
+      if (r.settings) {
+        const doc = { settings: r.settings, savedAt: new Date().toISOString() };
+        await lib.db.doc(SETTINGS_DOC).set(doc);
+        receiveSettings(doc);
+      }
       pendingRestore = null;
       btn.hidden = true;
-      setStatus(st, `استُرجع ${plansWord(items.length)}${r.names ? " والمسميات" : ""}.`, "ok");
+      setStatus(st, `استُرجع ${plansWord(items.length)}${r.names ? " والمسميات" : ""}${r.settings ? " والإعدادات التلقائية" : ""}.`, "ok");
     } catch (err) {
       setStatus(st, err && err.code === "invalid_argument" ? "لم تسمح قاعدة البيانات بالاسترجاع." : "تعذّر الاسترجاع الآن؛ أعد المحاولة.", "error");
     } finally {
@@ -2133,6 +2413,25 @@
 
   let resetArmed = null;
   function bindAdmin() {
+    // الإعدادات التلقائية للخطط
+    const dirty = () => (defaultsDirty = true);
+    $("defaultsForm").addEventListener("input", dirty);
+    $("defaultsForm").addEventListener("change", dirty);
+    $("dWeekdays").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-wd]");
+      if (!b) return;
+      b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+      defaultsDirty = true;
+    });
+    $("defaultsForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveDefaults();
+    });
+    $("dReset").addEventListener("click", () => {
+      fillDefaultsForm(clone(BASE_SETTINGS));
+      defaultsDirty = true;
+      setStatus($("defaultsStatus"), "مُلئت الإعدادات الأصلية؛ احفظها لتُعتمد.", "");
+    });
     $("adminAdd").addEventListener("click", addAdmin);
     $("adminEmail").addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -2791,7 +3090,7 @@
       const prefs = loadPrefs();
       // متون المستوى كلها معلَّمة في الأصل، والخطة من أول متونها
       const id = lvl === 0 ? customTexts[0] && customTexts[0].id : selectionId(lvl, levelTexts(lvl).map((t) => t.id));
-      startOpen = false;
+      startPending = null;
       state.loaded = null;
       state.approved = null;
       selectText(id, prefs.days && prefs.days[id]);
@@ -2804,57 +3103,82 @@
       selectText(e.target.value, prefs.days && prefs.days[e.target.value]);
       renderLibrary();
     });
-    // علامة صح على متن: الخطة من المتون المعلَّمة (ومتن واحد على الأقل)، ومتون بعدها من مستويات أخرى، وصفحة البدء
+    // علامة صح على متن: الخطة من المتون المعلَّمة (ومتن واحد على الأقل)، و«البدء» تحت كل متن، ومتن أو مستوى يُضاف بعدها
+    const noKeep = () => setStatus($("textChecksNote"), "يبقى متن واحد على الأقل يُحفظ في الخطة.", "error");
     $("textChecks").addEventListener("change", (e) => {
       const el = e.target;
       const lvl = +$("level").value;
-      const c = composition(lvl);
+      const ents = composition(lvl).entries;
       if (el.id === "l1Edition") return setLevel1({ edition: el.value });
-      if (el.id === "appendText") return el.value && recompose(c.ids.concat([el.value]), c.fixed, c.from);
-      if (el.id === "startOn") {
-        startOpen = el.checked;
-        if (!el.checked) return (c.from || c.done.length) && recompose(c.ids, c.ids[0], 0);
-        for (const id of ["startText", "startPage", "startHint"]) $(id).hidden = false;
-        $("startPage").focus();
+      if (el.id === "appendText") {
+        const v = el.value;
+        if (!v) return;
+        const ids = v.startsWith("level:") ? levelAppendIds(+v.slice(6), ents) : [v];
+        startPending = null;
+        recompose(ents.concat(ids.filter((id) => !ents.some((x) => x.id === id)).map((id) => ({ id, mode: "whole", from: 0 }))));
         return;
       }
-      // متن البدء: ما قبله في القائمة محفوظ، ويبدأ من أوله حتى تُكتب الصفحة
-      if (el.id === "startText") {
-        if (el.value === c.start) return;
-        recompose(c.ids, el.value, 0);
-        $("startPage").focus();
-        return;
-      }
-      if (el.id === "startPage") {
-        const r = startRange(c, c.start);
-        const n = parseIntAny(el.value);
-        if (!(n >= r.a && n <= r.b)) {
-          setStatus($("startHint"), `اكتب صفحة من ${AR(r.a)} إلى ${AR(r.b)}.`, "error");
+      // طريقة البدء في متن: «من صفحة…» تنتظر رقم الصفحة، وغيرها تُطبَّق مباشرة
+      if (el.matches("select[data-start]")) {
+        const id = el.dataset.start;
+        if (!ents.some((x) => x.id === id)) return;
+        if (el.value === "from") {
+          startPending = id;
+          fillTextSelect(lvl);
+          const inp = $("textChecks").querySelector(`input[data-page="${id}"]`);
+          if (inp) inp.focus();
           return;
         }
-        // أول صفحة في المتن: يبدأ من أوله
-        const from = n === pageSpan(getText(c.start)).a ? 0 : n;
-        return from !== c.from && recompose(c.ids, c.start, from);
+        startPending = null;
+        if (!recompose(ents.map((x) => (x.id === id ? { id, mode: el.value, from: 0 } : x)))) {
+          fillTextSelect(lvl);
+          noKeep();
+        }
+        return;
+      }
+      if (el.matches("input[data-page]")) {
+        const id = el.dataset.page;
+        const span = pageSpan(getText(id));
+        const n = parseIntAny(el.value);
+        const hint = $("textChecks").querySelector(`[data-hint="${id}"]`);
+        if (!(n >= span.a && n <= span.b)) {
+          if (hint) setStatus(hint, `اكتب صفحة من ${AR(span.a + 1)} إلى ${AR(span.b)}.`, "error");
+          return;
+        }
+        startPending = null;
+        // أول صفحة في المتن: من أوله
+        const from = n === span.a ? 0 : n;
+        recompose(ents.map((x) => (x.id === id ? { id, mode: from ? "from" : "whole", from } : x)));
+        return;
       }
       if (!el.matches("input[type=checkbox][data-id]")) return;
       const inLevel = levelTexts(lvl).map((t) => t.id);
       const checked = inLevel.filter((id) => $("textChecks").querySelector(`input[data-id="${id}"]`).checked);
+      const next = checked.map((id) => ents.find((x) => x.id === id) || { id, mode: "whole", from: 0 }).concat(ents.filter((x) => !inLevel.includes(x.id)));
       if (!checked.length) {
         el.checked = true;
         setStatus($("textChecksNote"), "علّم متناً واحداً على الأقل.", "error");
         return;
       }
-      // متن البدء وصفحته يبقيان ما بقي معلَّماً؛ وإلا تبدأ الخطة من أول متونها
-      recompose(checked.concat(c.ids.filter((id) => !inLevel.includes(id))), c.fixed, c.from);
+      if (startPending && !checked.includes(startPending)) startPending = null;
+      if (!recompose(next)) {
+        el.checked = true;
+        noKeep();
+      }
     });
     $("textChecks").addEventListener("click", (e) => {
-      const b = e.target.closest("[data-unappend]");
+      const b = e.target.closest("[data-unappend], [data-unappend-level]");
       if (!b) return;
-      const c = composition(+$("level").value);
-      recompose(c.ids.filter((id) => id !== b.dataset.unappend), c.fixed, c.from);
+      const lvl = +$("level").value;
+      const inLevel = levelTexts(lvl).map((t) => t.id);
+      const ents = composition(lvl).entries;
+      const next = b.dataset.unappend
+        ? ents.filter((x) => x.id !== b.dataset.unappend)
+        : ents.filter((x) => inLevel.includes(x.id) || String(getText(x.id).level) !== b.dataset.unappendLevel);
+      if (!recompose(next)) noKeep();
     });
     $("textChecks").addEventListener("keydown", (e) => {
-      if (e.target.id === "startPage" && e.key === "Enter") {
+      if (e.target.matches("input[data-page]") && e.key === "Enter") {
         e.preventDefault();
         e.target.dispatchEvent(new Event("change", { bubbles: true }));
       }
@@ -2993,6 +3317,14 @@
     $("linkAuto").addEventListener("click", () => {
       state.link.daysManual = false;
       regenerate();
+    });
+
+    // إعدادات الربط والمراجعة كما ضبطها صاحب الصفحة
+    $("resetDefaults").addEventListener("click", () => {
+      applyPlanDefaults();
+      renderReview();
+      regenerate();
+      setStatus($("status"), "عادت إعدادات الربط والمراجعة الكبرى إلى الإعدادات التلقائية.", "ok");
     });
 
     // المراجعة الكبرى
@@ -3243,20 +3575,39 @@
     fillLevelSelect();
     bind();
     bindAdmin();
-    const prefs = loadPrefs();
+    // الإعدادات التلقائية (آخر ما وصل منها)، ثم تفضيلات العارض ما لم تتغير الإعدادات بعدها
+    loadCachedSettings();
+    renderNotice();
+    let prefs = loadPrefs();
+    prefsStamp = prefs.settingsStamp || "";
+    if (prefsStamp !== settingsStamp) {
+      prefs = dropStalePrefs(prefs);
+      delete prefs.stale;
+      prefsStamp = prefs.settingsStamp = settingsStamp;
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(prefs));
+      } catch (e) {
+        /* لا بأس */
+      }
+    }
+    state.link = linkDefaults();
+    state.withReview = settings.review.enabled;
+    applyShowDefaults();
     if (prefs.link) Object.assign(state.link, prefs.link);
     if (typeof prefs.withReview === "boolean") state.withReview = prefs.withReview;
-    if (prefs.halaqa && HALAQAT.includes(prefs.halaqa.name)) state.halaqa = { enabled: !!prefs.halaqa.enabled, name: prefs.halaqa.name };
+    if (prefs.halaqa && HALAQAT.includes(prefs.halaqa.name))
+      state.halaqa = { enabled: typeof prefs.halaqa.enabled === "boolean" ? prefs.halaqa.enabled : state.halaqa.enabled, name: prefs.halaqa.name };
     if (typeof prefs.teacher === "string" && TEACHERS.includes(prefs.teacher)) state.teacher = prefs.teacher;
     fillTeacher();
-    if (prefs.student) state.student.enabled = !!prefs.student.enabled;
+    if (prefs.student && typeof prefs.student.enabled === "boolean") state.student.enabled = prefs.student.enabled;
     if (prefs.dates && Hijri.available) {
       const d = prefs.dates;
       const startDate = fromHijriShort(d.start);
+      const on = typeof d.enabled === "boolean" ? d.enabled : state.dates.enabled;
       state.dates = {
-        enabled: !!d.enabled && !!startDate,
-        start: startDate,
-        weekdays: Array.isArray(d.weekdays) && d.weekdays.length ? d.weekdays : [0, 1, 2, 3, 4],
+        enabled: on && !!(startDate || state.dates.start),
+        start: startDate || state.dates.start,
+        weekdays: Array.isArray(d.weekdays) && d.weekdays.length ? d.weekdays : state.dates.weekdays,
         fill: d.fill !== false,
       };
     }

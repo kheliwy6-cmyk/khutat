@@ -509,8 +509,7 @@ input.mini {
   color: var(--muted);
   font-size: 0.8rem;
 }
-.tmore,
-.tstart {
+.tmore {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -523,30 +522,55 @@ input.mini {
   padding: 5px 8px;
   font-size: 0.92rem;
 }
-.tstart input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--accent);
+/* سطر «البدء» تحت كل متن في الخطة */
+.tstart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: -2px;
+  padding: 0 26px 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.tcheck:has(+ .tstart) {
+  border-bottom: 0;
 }
 .tstart label {
   cursor: pointer;
-  font-size: 0.95rem;
 }
 .tstart select {
   width: auto;
   max-width: 100%;
-  padding: 3px 8px;
-  font-size: 0.92rem;
+  padding: 2px 6px;
+  font-size: 0.86rem;
+  line-height: 1.4;
 }
-.tstart select[hidden],
-.tstart input[hidden],
-.tstart .hint[hidden] {
-  display: none;
+.tstart input.mini {
+  width: 5.5em;
+  padding: 2px 6px;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  text-align: center;
 }
 .tstart .hint {
-  flex-basis: 100%;
   padding: 0;
+  font-size: 0.82rem;
+}
+.tcheck.is-done label,
+.tcheck.is-done .tname {
+  color: var(--muted);
+}
+.tadded-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--accent);
 }
 .link-btn.is-armed {
   font-weight: 600;
@@ -1364,6 +1388,44 @@ a.secondary {
 a.link-btn {
   font-size: 0.86rem;
 }
+/* ---------- إعلان الصفحة الرئيسية، والإعدادات التلقائية ---------- */
+.site-notice {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  border-inline-start-width: 4px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  white-space: pre-line;
+  line-height: 1.7;
+}
+.site-notice[hidden] {
+  display: none;
+}
+.defaults-line {
+  margin: -4px 0 14px;
+  font-size: 0.9rem;
+}
+.defaults-form {
+  display: grid;
+  gap: 8px;
+}
+.defaults-form .admin-level {
+  margin-top: 8px;
+}
+.defaults-form .check {
+  flex-wrap: wrap;
+}
+.defaults-form select {
+  width: auto;
+  padding: 4px 8px;
+}
+.defaults-form .field-title {
+  margin: 4px 0 0;
+  font-size: 0.92rem;
+}
+
 /* ---------- لوحة التحكم: الخطط الجاهزة والمتون ---------- */
 .files-admin-group {
   margin-bottom: 12px;

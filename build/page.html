@@ -177,6 +177,8 @@
         </div>
       </fieldset>
 
+      <p class="defaults-line"><button type="button" class="link-btn" id="resetDefaults">استعادة الإعدادات التلقائية للربط والمراجعة</button></p>
+
       <div class="field">
         <label for="title">عنوان الخطة في الملف</label>
         <input id="title" type="text" autocomplete="off">
@@ -189,6 +191,7 @@
         <p>يُعدّ كل يوم في «خطط المتون» مقداراً واحداً. فإذا اخترت نصف المدة جُمع كل يومين في يوم، وإذا اخترت مدة لا تقسم الأصل تقاربت مقادير الأيام بتوزيع الصفحات، مع إبقاء حدود الأيام الأصلية ما أمكن.</p>
         <p>الربط: آخر ما حُفظ قبل يوم الحفظ بعدد الصفحات أو الأيام، وإذا ألغيته بقيت خانته فارغة. والمراجعة الكبرى تبدأ من أول صفحة في المختصر وتمشي على قائمتك بالترتيب، أو على المستويات كما في خططها، ولا تدخلها صفحات الربط.</p>
         <p>المستوى الأول: المختصر بالطبعة التي تختارها ثم الأذكار والآداب، ويمكن ترك الأذكار والآداب. وفي المراجعة على حسب المستويات يمكن أن تبدأ الدورة من أي مستوى ثم تكمل وتعود إلى أولها.</p>
+        <p>«البدء» تحت كل متن في الخطة: من أوله، أو من صفحة معيّنة (فما قبلها محفوظ يدخل في المراجعة، ويبدأ منه الربط إن كان أول ما يُحفظ)، أو «محفوظ كله» فيدخل في المراجعة ولا يُحفظ. ويمكن أن تضيف بعد متون المستوى متناً أو مستوى كاملاً من غيره، ولكلٍّ منها «بدء» كذلك.</p>
         <p>ملفا وورد وPDF بمقاس واحد: كل ٢٢ يوماً في صفحة، ويصغر الخط في الخانة أو السطر الطويل (كاسم الطالب) حتى لا يتجاوز الصفحة.</p>
         <p>ملف اكسل المرفوع يحوي عموداً بعنوان «الحفظ»، ويمكن أن يحوي «الربط» و«المراجعة الكبرى» وسطراً باسم «المتن». أسهل طريقة أن تبدأ من ملف تصدّره من الصفحة.</p>
       </details>
@@ -264,6 +267,7 @@
       <h2 id="readyTitle">الخطط الجاهزة</h2>
       <p class="hint">خطط المستويات كما أعدّها البرنامج، بصيغتي وورد وPDF.</p>
     </div>
+    <p class="site-notice" id="siteNotice" role="note" hidden></p>
     <p class="status" id="readyStatus" role="status" aria-live="polite"></p>
     <div class="files" id="readyList"></div>
   </section>
@@ -290,6 +294,56 @@
       </div>
       <p class="status" id="adminStatus" role="status" aria-live="polite"></p>
     </form>
+    <details class="admin-sec admin-extra" id="adminDefaults" open hidden>
+      <summary>الإعدادات التلقائية للخطط<span>ما تبدأ به كل خطة: الربط والمراجعة الكبرى وما يظهر فيها، وإعلان في الصفحة الرئيسية</span></summary>
+      <form class="defaults-form" id="defaultsForm" novalidate>
+        <h3 class="admin-level">الربط</h3>
+        <div class="check"><input type="checkbox" id="dLinkOn"><label for="dLinkOn">إضافة الربط إلى الخطة</label></div>
+        <div class="check">
+          <input type="radio" name="dLinkMode" id="dLinkPages" value="pages"><label for="dLinkPages">بعدد الصفحات</label>
+          <input id="dLinkPagesN" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="عدد صفحات الربط"><span class="sub-row">صفحات قبل يوم الحفظ</span>
+        </div>
+        <div class="check">
+          <input type="radio" name="dLinkMode" id="dLinkDays" value="days"><label for="dLinkDays">بعدد الأيام</label>
+          <input id="dLinkDaysN" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="عدد أيام الربط" placeholder="تلقائي"><span class="sub-row">اتركه فارغاً ليُحسب من الخطة الأصلية لكل متن</span>
+        </div>
+        <div class="check"><input type="checkbox" id="dLinkCont"><label for="dLinkCont">متابعة الربط من المتن السابق</label></div>
+
+        <h3 class="admin-level">المراجعة الكبرى</h3>
+        <div class="check"><input type="checkbox" id="dRevOn"><label for="dRevOn">إضافة المراجعة الكبرى إلى الخطة</label></div>
+        <div class="check"><input type="radio" name="dRevMethod" id="dRevLevels" value="levels"><label for="dRevLevels">على حسب المستويات</label></div>
+        <div class="check"><input type="radio" name="dRevMethod" id="dRevList" value="list"><label for="dRevList">متون أختارها بالترتيب</label></div>
+        <div class="check">
+          <label for="dRevPages">مقدار المراجعة على حسب المستويات</label>
+          <input id="dRevPages" class="mini" type="text" inputmode="numeric" autocomplete="off"><span class="sub-row">صفحة في اليوم</span>
+        </div>
+        <div class="check">
+          <label for="dRevItemN">مقدار مراجعة كل متن في القائمة</label>
+          <input id="dRevItemN" class="mini" type="text" inputmode="numeric" autocomplete="off">
+          <select id="dRevItemMode" aria-label="طريقة مقدار المراجعة في القائمة"><option value="pages">صفحات في اليوم</option><option value="days">المدة بالأيام</option></select>
+        </div>
+        <div class="check"><input type="checkbox" id="dRevSelf"><label for="dRevSelf">وفي آخر الدورة ما حُفظ من المتن نفسه</label></div>
+        <div class="check"><input type="checkbox" id="dRevRepeat"><label for="dRevRepeat">إذا انتهت الدورة تعود إلى أولها</label></div>
+        <div class="check"><input type="checkbox" id="dRevMerge"><label for="dRevMerge">المتون الأقل من ٢٠ صفحة تُراجَع معاً (في القائمة)</label></div>
+
+        <h3 class="admin-level">ما يظهر في الخطة</h3>
+        <div class="check"><input type="checkbox" id="dStudent"><label for="dStudent">كتابة اسم الطالب مفعّلة</label></div>
+        <div class="check"><input type="checkbox" id="dHalaqa"><label for="dHalaqa">الحلقة مفعّلة</label></div>
+        <div class="check"><input type="checkbox" id="dDates"><label for="dDates">مدة الخطة بالهجري مفعّلة (تبدأ من يوم فتح الصفحة)</label></div>
+        <p class="field-title">أيام الدراسة في الأسبوع</p>
+        <div class="weekdays" id="dWeekdays" role="group" aria-label="أيام الدراسة في الأسبوع"></div>
+
+        <h3 class="admin-level">إعلان في الصفحة الرئيسية</h3>
+        <div class="admin-field"><label for="dNotice">نص يظهر لكل زائر أعلى «الخطط الجاهزة»؛ اتركه فارغاً ليختفي</label><textarea id="dNotice" rows="3" maxlength="600"></textarea></div>
+
+        <div class="admin-actions">
+          <button type="submit" class="primary" id="dSave">حفظ الإعدادات</button>
+          <button type="button" class="secondary" id="dReset">ملء الإعدادات الأصلية</button>
+        </div>
+        <p class="status" id="defaultsStatus" role="status" aria-live="polite"></p>
+        <p class="hint">بعد الحفظ تصير هذه هي الإعدادات عند كل من يفتح الصفحة، ولكلٍّ أن يغيّرها لخطته. والخطط المحفوظة تبقى كما اعتُمدت.</p>
+      </form>
+    </details>
     <details class="admin-sec admin-extra" id="adminFiles" open hidden>
       <summary>الخطط الجاهزة والمتون PDF<span>إضافة ملفات وورد وPDF وحذفها، وإخفاء ما لا تريده من الموجود</span></summary>
       <div id="filesAdmin"></div>
