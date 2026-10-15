@@ -5049,6 +5049,9 @@ const XlsxLite = (() => {
   const level1Ids = (c = state.level1) => [c.edition].concat(c.adhkar ? ["adhkar"] : []);
   const RLM = "\u200F";
   // أسماء قصيرة تُكتب في خانة الملاحظات عند بدء مراجعة كل متن (الخانة ضيقة)
+  // اسم تغيّر: الخطط المحفوظة قبل تغييره تظهر وتُفتح وتُصدَّر بالاسم الجديد
+  const RENAMED = [["شروط الصلاة وآدابها وأركانها", "شروط الصلاة وأركانها وواجباتها"]];
+  const renamed = (s) => (typeof s === "string" ? RENAMED.reduce((x, [a, b]) => x.split(a).join(b), s) : s);
   const SHORT = {
     mukhtasar41: "المختصر", mukhtasar45: "المختصر", adhkar: "الأذكار والآداب", arbaeen: "الأربعون النووية",
     nawaqid: "نواقض الإسلام", qawaid: "القواعد الأربع", usul: "الأصول الثلاثة", tuhfa: "تحفة الأطفال",
@@ -6264,7 +6267,7 @@ const XlsxLite = (() => {
   const planDescription = () => describePlan(currentRows(), state.plan.D, state.studyDates, planTextNames(), reviewIsSelf());
   // وصف خطة محفوظة قبل إضافة الوصف: يُحسب من صفوفها
   function savedDescription(p) {
-    if (p.description) return p.description;
+    if (p.description) return renamed(p.description);
     const rows = (p.rows || []).map(([memo, link, big]) => ({ memo, link, big }));
     if (!rows.length) return "";
     const start = p.dates && p.dates.start ? fromHijriShort(p.dates.start) : null;
@@ -7097,7 +7100,7 @@ const XlsxLite = (() => {
     }
     setStatus(st, done ? ok : "تعذّر النسخ تلقائياً؛ انسخه يدوياً.", done ? "ok" : "error");
   }
-  const waHref = (p) => "https://wa.me/?text=" + encodeURIComponent(`«${AR(p.name || "خطة")}»\n${planLink(p.id)}`);
+  const waHref = (p) => "https://wa.me/?text=" + encodeURIComponent(`«${AR(renamed(p.name) || "خطة")}»\n${planLink(p.id)}`);
   // رابط مرسَل: تُقرأ الخطة وحدها من قاعدة الخطط وتُفتح في صفحة الإنشاء
   let sharedOpening = null;
   async function openSharedPlan(id) {
@@ -7117,7 +7120,7 @@ const XlsxLite = (() => {
         setStatus(st, "متن هذه الخطة غير موجود في الصفحة.", "error");
         return;
       }
-      setStatus(st, `فُتحت «${AR(p.name)}»؛ صدّرها، أو عدّلها ثم اعتمدها.`, "ok");
+      setStatus(st, `فُتحت «${AR(renamed(p.name))}»؛ صدّرها، أو عدّلها ثم اعتمدها.`, "ok");
     } catch (e) {
       setStatus(st, "تعذّر فتح الخطة الآن؛ تحقّق من الاتصال ثم أعد تحميل الصفحة.", "error");
     } finally {
@@ -7142,11 +7145,11 @@ const XlsxLite = (() => {
     if (p.level1) state.level1 = validLevel1(p.level1);
     state.teacher = typeof p.teacher === "string" ? p.teacher : "";
     fillTeacher();
-    state.loaded = { id: p.id, name: p.name, textId: p.textId || null, textName: p.textName, halaqa: p.halaqa || "", teacher: p.teacher || "", by: p.by || null };
+    state.loaded = { id: p.id, name: renamed(p.name), textId: p.textId || null, textName: renamed(p.textName), halaqa: p.halaqa || "", teacher: p.teacher || "", by: p.by || null };
     state.approved = null;
     // خطة محفوظة قبل المراجعة المتصلة: تبقى مراجعتها كما حُفظت
     const review = p.review && typeof p.review === "object" ? Object.assign({ cont: false }, p.review) : p.review;
-    selectText(id, p.days, { title: p.title, review, keepLink: true });
+    selectText(id, p.days, { title: renamed(p.title), review, keepLink: true });
     applyRows((p.rows || []).map(([memo, link, big, note]) => ({ memo, link, big, note })));
     // خطة محفوظة: معتمدة كما هي، فأزرار التصدير ظاهرة
     state.approved = { key: planKey(), note: "الخطة محفوظة في «الخطط المحفوظة»." };
@@ -8080,7 +8083,7 @@ const XlsxLite = (() => {
       const ft = $("libTeacher").value;
       const shown = lib.plans.filter(
         (p) =>
-          (!q || fold([p.name, p.textName, p.halaqa, p.teacher, savedDescription(p)].join(" ")).includes(q)) &&
+          (!q || fold([renamed(p.name), renamed(p.textName), p.halaqa, p.teacher, savedDescription(p)].join(" ")).includes(q)) &&
           (!fl || String(planLevel(p)) === fl) &&
           (!fh || (p.halaqa || NONE) === fh) &&
           (!ft || (p.teacher || NONE) === ft)
@@ -8093,7 +8096,7 @@ const XlsxLite = (() => {
               const t = p.textId ? getText(p.textId) : null;
               const saved = p.savedAt ? Hijri.dmy(new Date(p.savedAt)) : "";
               const meta = [
-                AR((t && t.name) || p.textName || ""),
+                AR((t && t.name) || renamed(p.textName) || ""),
                 daysWord(p.days || (p.rows || []).length),
                 p.halaqa ? "حلقة " + p.halaqa : "",
                 p.teacher ? "المعلم: " + p.teacher : "",
@@ -8102,7 +8105,7 @@ const XlsxLite = (() => {
               const open = state.loaded && state.loaded.id === p.id;
               const pid = esc(p.id);
               return `<li class="lib-item${open ? " is-open" : ""}">
-            <div class="lib-main"><b>${esc(AR(p.name || "خطة"))}</b><span class="hint">${esc(meta)}</span>${savedDescription(p) ? `<span class="lib-desc">${esc(savedDescription(p))}</span>` : ""}</div>
+            <div class="lib-main"><b>${esc(AR(renamed(p.name) || "خطة"))}</b><span class="hint">${esc(meta)}</span>${savedDescription(p) ? `<span class="lib-desc">${esc(savedDescription(p))}</span>` : ""}</div>
             <div class="lib-actions">
               <button type="button" class="link-btn" data-open="${pid}">${open ? "مفتوحة" : "فتح"}</button>
               <button type="button" class="link-btn" data-word="${pid}">تنزيل وورد</button>
@@ -8559,7 +8562,7 @@ const XlsxLite = (() => {
       const now = new Date().toISOString();
       await lib.db.collection("library").doc().set({
         kind: "ready",
-        title: cleanName(p.name) || AR(state.text.name),
+        title: cleanName(renamed(p.name)) || AR(state.text.name),
         note: daysNote(state.plan.D),
         level: levelOf(state.text),
         files: stored,
@@ -8568,7 +8571,7 @@ const XlsxLite = (() => {
         createdAt: now,
         updatedAt: now,
       });
-      setStatus(st, `أُضيفت «${AR(p.name)}» إلى «${tabName("ready")}» بصيغتي وورد وPDF، وتعدّلها أو تحذفها من لوحة التحكم.`, "ok");
+      setStatus(st, `أُضيفت «${AR(renamed(p.name))}» إلى «${tabName("ready")}» بصيغتي وورد وPDF، وتعدّلها أو تحذفها من لوحة التحكم.`, "ok");
     } catch (err) {
       await dropBlobs(stored);
       setStatus(st, filesError(err), "error");
@@ -9089,7 +9092,7 @@ const XlsxLite = (() => {
       if (wordBtn) exportDocx(wordBtn, st);
       else if (pdfBtn) exportPdf(pdfBtn, st);
       else {
-        setStatus($("status"), `فُتحت «${AR(p.name)}»؛ صدّرها، أو عدّلها ثم اعتمدها من جديد.`, "ok");
+        setStatus($("status"), `فُتحت «${AR(renamed(p.name))}»؛ صدّرها، أو عدّلها ثم اعتمدها من جديد.`, "ok");
         go("create");
       }
     });
