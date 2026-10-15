@@ -1,0 +1,351 @@
+
+
+<div class="app" dir="rtl" lang="ar">
+  <header class="masthead">
+    <img class="logo" id="logo" alt="شعار برنامج تأهيل لحفظ السنة النبوية والمتون العلمية">
+    <h1 id="siteTitle">الخطط العلميّة</h1>
+  </header>
+
+  <nav class="pages-nav" aria-label="صفحات الأداة">
+    <a href="#ready" data-view="ready" aria-current="page"><span data-tab="ready">الخطط الجاهزة</span></a>
+    <a href="#texts" data-view="texts"><span data-tab="texts">المتون PDF</span></a>
+    <a href="#create" data-view="create"><span data-tab="create">إنشاء خطة</span></a>
+    <a href="#saved" data-view="saved"><span data-tab="saved">الخطط المحفوظة</span> <span class="count" id="navSavedCount" hidden></span></a>
+    <a href="#admin" data-view="admin" id="navAdmin" hidden><span>لوحة التحكم</span></a>
+  </nav>
+
+  <main>
+  <div class="workbench" id="view-create">
+    <aside class="panel" aria-label="إعداد الخطة">
+      <div class="field">
+        <label for="level">المستوى</label>
+        <select id="level"></select>
+      </div>
+      <div class="field">
+        <p class="field-title" id="textLabel">المتون</p>
+        <div class="text-checks" id="textChecks" role="group" aria-labelledby="textLabel"></div>
+        <select id="text" aria-labelledby="textLabel" hidden></select>
+        <p class="hint" id="textInfo"></p>
+      </div>
+
+      <div class="field">
+        <label for="days">عدد أيام الخطة</label>
+        <div class="stepper">
+          <button type="button" id="inc" aria-label="زيادة يوم">+</button>
+          <input id="days" type="text" inputmode="numeric" autocomplete="off">
+          <button type="button" id="dec" aria-label="إنقاص يوم">−</button>
+        </div>
+        <input id="daysRange" type="range" min="1" step="1" aria-label="عدد أيام الخطة">
+        <div class="chips" id="quick"></div>
+        <p class="hint" id="maxNote"></p>
+      </div>
+
+      <fieldset class="field box">
+        <legend>اسم الطالب</legend>
+        <div class="check">
+          <input type="checkbox" id="withStudent">
+          <label for="withStudent">كتابة اسم الطالب في الخطة</label>
+        </div>
+        <input id="student" type="text" autocomplete="off" aria-label="اسم الطالب" placeholder="اكتب اسم الطالب" disabled>
+      </fieldset>
+
+      <fieldset class="field box">
+        <legend>الحلقة</legend>
+        <div class="check">
+          <input type="checkbox" id="withHalaqa">
+          <label for="withHalaqa">تفعيل الحلقة في الخطة</label>
+        </div>
+        <select id="halaqa" aria-label="اسم الحلقة" disabled></select>
+      </fieldset>
+
+      <fieldset class="field box" id="datesBox">
+        <legend>مدة الخطة بالهجري</legend>
+        <div class="check">
+          <input type="checkbox" id="withDates">
+          <label for="withDates">كتابة المدة في الخطة</label>
+        </div>
+        <div class="review-body" id="datesBody" hidden>
+          <div class="date-row">
+            <span class="date-label">من</span>
+            <select id="sd" aria-label="يوم البداية"></select>
+            <select id="sm" aria-label="شهر البداية"></select>
+            <select id="sy" aria-label="سنة البداية"></select>
+          </div>
+          <div class="date-row">
+            <span class="date-label">إلى</span>
+            <select id="ed" aria-label="يوم النهاية"></select>
+            <select id="em" aria-label="شهر النهاية"></select>
+            <select id="ey" aria-label="سنة النهاية"></select>
+          </div>
+          <div class="weekdays" id="weekdays" role="group" aria-label="أيام الدراسة في الأسبوع"></div>
+          <div class="check">
+            <input type="checkbox" id="fillDays" checked>
+            <label for="fillDays">كتابة اليوم والتاريخ في جدول الخطة</label>
+          </div>
+          <p class="hint" id="datesInfo"></p>
+        </div>
+      </fieldset>
+
+      <fieldset class="field box">
+        <legend>الربط</legend>
+        <div class="check">
+          <input type="checkbox" id="withLink" checked>
+          <label for="withLink">إضافة الربط إلى الخطة</label>
+        </div>
+        <div class="link-modes" id="linkBody">
+          <div class="check">
+            <input type="radio" name="linkMode" id="linkByPages" value="pages" checked>
+            <label for="linkByPages">بعدد الصفحات</label>
+            <input id="linkPages" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="عدد صفحات الربط">
+            <span class="sub-row">صفحات قبل يوم الحفظ</span>
+          </div>
+          <div class="check">
+            <input type="radio" name="linkMode" id="linkByDays" value="days">
+            <label for="linkByDays">بعدد الأيام</label>
+            <input id="linkDays" class="mini" type="text" inputmode="numeric" autocomplete="off" aria-label="عدد أيام الربط">
+            <span class="tag" id="linkAutoTag">تلقائي</span>
+            <button type="button" class="link-btn" id="linkAuto" hidden>إعادته تلقائياً</button>
+          </div>
+          <div class="link-prev" id="linkContRow">
+            <div class="check">
+              <input type="checkbox" id="linkCont" checked>
+              <label for="linkCont">متابعة الربط من المتن السابق</label>
+            </div>
+            <select id="linkPrev" aria-label="المتن السابق"></select>
+            <p class="hint" id="linkPrevNote"></p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="field box">
+        <legend>المراجعة الكبرى</legend>
+        <div class="check">
+          <input type="checkbox" id="withReview" checked>
+          <label for="withReview">إضافة المراجعة الكبرى إلى الخطة</label>
+        </div>
+        <div class="review-body" id="reviewBody">
+          <div class="method-switch" role="radiogroup" aria-label="طريقة المراجعة">
+            <label class="method"><input type="radio" name="reviewMethod" id="methodList" value="list">متون أختارها بالترتيب</label>
+            <label class="method"><input type="radio" name="reviewMethod" id="methodLevels" value="levels">على حسب المستويات</label>
+          </div>
+          <div class="review-body" id="listBody">
+            <p class="hint">تبدأ المراجعة من أول صفحة في المتن الأول حتى ينتهي، ثم المتن الذي يليه.</p>
+            <ol class="rlist" id="reviewList"></ol>
+            <div class="rtools">
+              <button type="button" class="ghost" id="addReview">+ إضافة المتن الذي يليه</button>
+              <button type="button" class="link-btn" id="fillPrev">كل المتون التي قبله</button>
+            </div>
+            <div class="check">
+              <input type="checkbox" id="mergeShort" checked>
+              <label for="mergeShort">المتون الأقل من ٢٠ صفحة تُراجَع معاً (كالنواقض والقواعد)</label>
+            </div>
+          </div>
+          <div class="review-body" id="levelsBody" hidden>
+            <p class="hint">كما في خطط المستويات: تبدأ من أول متن المستوى الأول، ثم متون كل مستوى بترتيب صفحاتها، حتى ما قبل مستوى الخطة.</p>
+            <div class="l1-box" id="revL1">
+              <div class="level-field">
+                <label for="revEdition">المستوى الأول: طبعة المختصر</label>
+                <select id="revEdition"></select>
+              </div>
+              <div class="check" id="revAdhkarRow">
+                <input type="checkbox" id="revAdhkar" checked>
+                <label for="revAdhkar">ومعه الأذكار والآداب</label>
+              </div>
+            </div>
+            <div class="check">
+              <label for="levelPages">مقدار المراجعة</label>
+              <input id="levelPages" class="mini" type="text" inputmode="numeric" autocomplete="off">
+              <span class="sub-row">صفحة في اليوم</span>
+            </div>
+            <div class="check">
+              <input type="checkbox" id="levelSelf" checked>
+              <label for="levelSelf">وفي آخر الدورة ما حُفظ من المتن نفسه</label>
+            </div>
+            <div class="link-prev" id="levelStartRow">
+              <div class="check">
+                <input type="checkbox" id="levelStartOn">
+                <label for="levelStartOn">البدء من مستوى معيّن</label>
+              </div>
+              <select id="levelStart" aria-label="المستوى الذي تبدأ منه المراجعة" hidden></select>
+            </div>
+            <ol class="lseq" id="levelSeq" aria-label="ترتيب المراجعة"></ol>
+          </div>
+          <div class="check">
+            <input type="checkbox" id="reviewRepeat" checked>
+            <label for="reviewRepeat" id="repeatLabel">إذا انتهت القائمة تعود إلى أولها</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="title">عنوان الخطة في الملف</label>
+        <input id="title" type="text" autocomplete="off">
+        <p class="hint" id="titleNote" hidden>يُضاف إليه في كل صفحة أسماء متونها، كما في الخطط الجاهزة.</p>
+        <button type="button" class="link-btn" id="resetTitle">استعادة العنوان المقترح</button>
+      </div>
+
+      <details class="howto">
+        <summary>كيف تُوزَّع المقادير؟</summary>
+        <p>يُعدّ كل يوم في «خطط المتون» مقداراً واحداً. فإذا اخترت نصف المدة جُمع كل يومين في يوم، وإذا اخترت مدة لا تقسم الأصل تقاربت مقادير الأيام بتوزيع الصفحات، مع إبقاء حدود الأيام الأصلية ما أمكن.</p>
+        <p>الربط: آخر ما حُفظ قبل يوم الحفظ بعدد الصفحات أو الأيام، وإذا ألغيته بقيت خانته فارغة. والمراجعة الكبرى تبدأ من أول صفحة في المختصر وتمشي على قائمتك بالترتيب، أو على المستويات كما في خططها، ولا تدخلها صفحات الربط.</p>
+        <p>المستوى الأول: المختصر بالطبعة التي تختارها ثم الأذكار والآداب، ويمكن ترك الأذكار والآداب. وفي المراجعة على حسب المستويات يمكن أن تبدأ الدورة من أي مستوى ثم تكمل وتعود إلى أولها.</p>
+        <p>ملفا وورد وPDF بمقاس واحد: كل ٢٢ يوماً في صفحة، ويصغر الخط في الخانة أو السطر الطويل (كاسم الطالب) حتى لا يتجاوز الصفحة.</p>
+        <p>ملف اكسل المرفوع يحوي عموداً بعنوان «الحفظ»، ويمكن أن يحوي «الربط» و«المراجعة الكبرى» وسطراً باسم «المتن». أسهل طريقة أن تبدأ من ملف تصدّره من الصفحة.</p>
+      </details>
+    </aside>
+
+    <section class="preview" aria-label="الخطة">
+      <section class="approve" id="approveBar" aria-label="اعتماد الخطة وتصديرها">
+        <p class="open-note" id="openNote" hidden>من الخطط المحفوظة: <b id="openName"></b> · <a href="#saved">كل الخطط المحفوظة</a></p>
+        <div class="teacher-row" id="teacherRow" hidden>
+          <label for="teacher">المعلم</label>
+          <select id="teacher"></select>
+          <span class="hint">يُحفظ مع الخطة في «الخطط المحفوظة»، ولا يظهر في ورقتها.</span>
+        </div>
+        <div class="approve-row" id="approveRow">
+          <button type="button" class="primary" id="approve">اعتماد الخطة</button>
+          <div class="approve-text">
+            <p class="approve-plan" id="exportBtnNote"></p>
+            <p class="approve-note" id="approveNote"></p>
+          </div>
+        </div>
+        <div class="export-box" id="exportBox" hidden>
+          <p class="approved" id="approvedNote"></p>
+          <div class="export-grid">
+            <button type="button" class="primary" id="export">تصدير وورد</button>
+            <button type="button" class="primary" id="exportPdf">تصدير PDF</button>
+            <button type="button" class="secondary" id="exportXlsx">تصدير اكسل</button>
+            <button type="button" class="secondary" id="importBtn">رفع خطة من اكسل</button>
+            <a class="secondary wa" id="shareWa" href="#" target="_blank" rel="noopener" hidden>إرسال بالواتساب</a>
+          </div>
+        </div>
+        <input type="file" id="importFile" accept=".xlsx,.csv" hidden>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <dl class="readout">
+        <div class="stat"><dt>مدة الخطة</dt><dd><b class="big" id="rDays"></b><span class="sub" id="rDaysFrom"></span></dd></div>
+        <div class="stat"><dt>مقدار اليوم</dt><dd><b class="big" id="rLoad"></b><span class="sub">من يوم الخطة الأصلية</span></dd></div>
+        <div class="stat"><dt>متوسط الحفظ اليومي</dt><dd><b class="big" id="rPages"></b><span class="sub" id="rPagesNote"></span></dd></div>
+        <div class="stat"><dt>صفحات الملف</dt><dd><b class="big" id="rSheets"></b><span class="sub">٢٢ يوماً في كل صفحة</span></dd></div>
+      </dl>
+
+      <div class="preview-bar">
+        <h2>معاينة الملف</h2>
+        <p class="hint">يمكنك تعديل أي خانة قبل التصدير. تغيير الإعدادات يعيد توليد الخطة.</p>
+        <div class="edits" id="edits" hidden>
+          <span id="editsCount"></span>
+          <button type="button" class="link-btn" id="undoEdits">إلغاء التعديلات</button>
+        </div>
+      </div>
+
+      <div class="sheets" id="sheets"></div>
+    </section>
+  </div>
+
+  <section class="page" id="view-saved" aria-labelledby="savedTitle" hidden>
+    <div class="page-head">
+      <h2 id="savedTitle">الخطط المحفوظة</h2>
+      <p class="hint" id="libNote"></p>
+    </div>
+    <div class="lib-tools" id="libTools" hidden>
+      <input type="search" id="libSearch" placeholder="ابحث باسم الخطة أو المتن أو الحلقة أو المعلم" aria-label="بحث في الخطط المحفوظة" autocomplete="off">
+      <select id="libLevel" aria-label="تصفية بالمستوى" hidden></select>
+      <select id="libHalaqa" aria-label="تصفية بالحلقة" hidden></select>
+      <select id="libTeacher" aria-label="تصفية بالمعلم" hidden></select>
+      <p class="hint lib-count" id="libCount"></p>
+    </div>
+    <p class="status" id="libStatus" role="status" aria-live="polite"></p>
+    <ul class="lib-list" id="libList"></ul>
+  </section>
+
+  <section class="page" id="view-ready" aria-labelledby="readyTitle" hidden>
+    <div class="page-head">
+      <h2 id="readyTitle">الخطط الجاهزة</h2>
+      <p class="hint">خطط المستويات كما أعدّها البرنامج، بصيغتي وورد وPDF.</p>
+    </div>
+    <p class="status" id="readyStatus" role="status" aria-live="polite"></p>
+    <div class="files" id="readyList"></div>
+  </section>
+
+  <section class="page" id="view-texts" aria-labelledby="textsTitle" hidden>
+    <div class="page-head">
+      <h2 id="textsTitle">المتون PDF</h2>
+      <p class="hint">نص كل متن بصيغة PDF للقراءة والطباعة.</p>
+    </div>
+    <p class="status" id="textsStatus" role="status" aria-live="polite"></p>
+    <div class="files" id="textsList"></div>
+  </section>
+  <section class="page admin" id="view-admin" aria-labelledby="adminTitle" hidden>
+    <div class="page-head">
+      <h2 id="adminTitle">لوحة التحكم</h2>
+      <p class="hint">لصاحب الصفحة وحده. ما تحفظه هنا من مسميات يظهر لكل من يفتح الصفحة، وفي الملفات التي تُصدَّر بعده. اترك الخانة فارغة ليعود اسمها الأصلي.</p>
+    </div>
+    <p class="admin-lock" id="adminLock">لوحة التحكم لصاحب الصفحة فقط.</p>
+    <form class="admin-form" id="adminForm" hidden novalidate>
+      <div id="adminFields"></div>
+      <div class="admin-actions">
+        <button type="submit" class="primary" id="adminSave">حفظ المسميات</button>
+        <button type="button" class="secondary" id="adminReset">استعادة المسميات الأصلية</button>
+      </div>
+      <p class="status" id="adminStatus" role="status" aria-live="polite"></p>
+    </form>
+    <details class="admin-sec admin-extra" id="adminFiles" open hidden>
+      <summary>الخطط الجاهزة والمتون PDF<span>إضافة ملفات وورد وPDF وحذفها، وإخفاء ما لا تريده من الموجود</span></summary>
+      <div id="filesAdmin"></div>
+      <form class="files-form" id="filesForm" novalidate>
+        <h3 class="admin-level" id="filesFormTitle">إضافة ملف</h3>
+        <div class="files-kind" id="filesKind" role="radiogroup" aria-label="نوع الإضافة">
+          <label class="check"><input type="radio" name="fkind" value="ready" checked> خطة جاهزة (وورد وPDF)</label>
+          <label class="check"><input type="radio" name="fkind" value="texts"> متن PDF</label>
+        </div>
+        <div class="admin-grid">
+          <div class="admin-field"><label for="fTitle">العنوان</label><input id="fTitle" type="text" autocomplete="off" maxlength="160"></div>
+          <div class="admin-field"><label for="fLevel">المستوى</label><select id="fLevel"></select></div>
+          <div class="admin-field" id="fNoteRow"><label for="fNote">الملاحظة (كالمدة)</label><input id="fNote" type="text" autocomplete="off" maxlength="160" placeholder="60 يوماً"></div>
+          <div class="admin-field" id="fDocxRow"><label for="fDocx">ملف وورد</label><input id="fDocx" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></div>
+          <div class="admin-field"><label for="fPdf">ملف PDF</label><input id="fPdf" type="file" accept=".pdf,application/pdf"></div>
+        </div>
+        <p class="hint" id="filesFormHint"></p>
+        <div class="admin-actions">
+          <button type="submit" class="primary" id="fSave">إضافة</button>
+          <button type="button" class="secondary" id="fCancel" hidden>إلغاء التعديل</button>
+        </div>
+      </form>
+      <p class="status" id="filesStatus" role="status" aria-live="polite"></p>
+      <p class="hint">تُحفظ الملفات في قاعدة بيانات الموقع، ولا يزيد الملف على ١٥ م.ب. احتفظ بنسخها عندك، فالنسخة الاحتياطية لا تشملها. وما في الصفحة أصلاً يُخفى ولا يُحذف، فتستطيع إظهاره متى شئت.</p>
+    </details>
+    <details class="admin-sec admin-extra" id="adminPeople" open hidden>
+      <summary>المشرفون<span>يدخلون بحساب Google فيحذفون الخطط ويعدّلونها ويعدّلون المسميات</span></summary>
+      <ul class="admin-list" id="adminList"></ul>
+      <div class="admin-add">
+        <input type="email" id="adminEmail" dir="ltr" placeholder="name@gmail.com" aria-label="بريد المشرف" autocomplete="off">
+        <button type="button" class="secondary" id="adminAdd">إضافة مشرف</button>
+      </div>
+      <p class="hint">إضافة المشرفين وحذفهم لك وحدك.</p>
+      <p class="status" id="adminPeopleStatus" role="status" aria-live="polite"></p>
+    </details>
+    <details class="admin-sec admin-extra" id="adminBackup" open hidden>
+      <summary>النسخة الاحتياطية<span>كل الخطط المحفوظة والمسميات في ملف واحد</span></summary>
+      <p class="hint">نزّل نسخة من حين لآخر واحفظها عندك. والاسترجاع يضيف ما في الملف ويحدّث المتطابق منه، ولا يحذف شيئاً.</p>
+      <div class="admin-actions">
+        <button type="button" class="primary" id="backupDown">تنزيل نسخة احتياطية</button>
+        <button type="button" class="secondary" id="backupUp">استرجاع من نسخة</button>
+        <button type="button" class="secondary" id="backupConfirm" hidden>تأكيد الاسترجاع</button>
+      </div>
+      <input type="file" id="backupFile" accept=".json,application/json" hidden>
+      <p class="status" id="backupStatus" role="status" aria-live="polite"></p>
+    </details>
+  </section>
+  </main>
+
+  <footer class="site-foot" id="siteFoot" hidden>
+    <p class="owner-line">
+      <span id="ownerInfo"></span>
+      <button type="button" class="link-btn" id="ownerIn">دخول صاحب الصفحة</button>
+      <button type="button" class="link-btn" id="ownerOut" hidden>تسجيل الخروج</button>
+    </p>
+    <p class="status" id="ownerStatus" role="status" aria-live="polite"></p>
+  </footer>
+</div>
+
